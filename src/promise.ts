@@ -1,4 +1,5 @@
 import Gio from "gi://Gio?version=2.0";
+import { FsError } from "./errors";
 
 type PromiseApi<T> = {
   /** Resolves this promise with the given value. */
@@ -14,7 +15,7 @@ type PromiseApi<T> = {
    * If this operation was aborted this will throw an error,
    * stopping the execution of next operations.
    */
-  breakPoint: () => void;
+  breakpoint: () => void;
   /**
    * Gio cancellable object which can be passed to Gio async
    * functions.
@@ -22,21 +23,31 @@ type PromiseApi<T> = {
   cancellable: Gio.Cancellable | null;
 };
 
-class AbortFsError extends Error {
+class AbortFsError extends FsError {
   constructor(public reason: any) {
     super("Operation was Aborted.");
     this.name = "AbortFsError";
   }
 }
 
-class BreakPointError extends Error {
+class BreakPointError extends FsError {
+  static isBreakPointError(err: any): err is BreakPointError {
+    return !!err && typeof err === "object" && err instanceof BreakPointError;
+  }
+
   constructor(public msg: any) {
     super("Breakpoint was reached after operation was aborted.");
     this.name = "BreakPointError";
   }
 }
 
+declare class GioIOError {
+  message?: string;
+  stack?: string;
+}
+
 export const promise = <T = void>(
+  name: string,
   abortSignal: AbortSignal | undefined | null,
   callback: (api: PromiseApi<T>) => any
 ) => {
@@ -46,7 +57,43 @@ export const promise = <T = void>(
     cancellable = Gio.Cancellable.new();
   }
 
+  const parseError = (err: any): FsError => {
+    if (err instanceof Error) {
+      if (!FsError.isFsError(err)) {
+        err = FsError.from(err);
+      }
+      err.addMessagePrefix(`'${name}' has failed`);
+
+      return err;
+    } else if (typeof err === "object") {
+      if (err instanceof (Gio.IOErrorEnum as any as typeof GioIOError)) {
+        const msg = err.message;
+        const stack = err.stack;
+
+        err = new FsError(msg ?? "");
+        err.stack = stack;
+
+        err.addMessagePrefix(`'${name}' has failed`);
+
+        return err;
+      } else if (err.stack) {
+        const stack = err.stack;
+        err = new FsError(
+          `'${name}' has failed due to an error.\n` + String(err)
+        );
+        err.stack = stack;
+
+        return err;
+      }
+    }
+    return new FsError(
+      `'${name}' has failed due to an unknown error.\n` + String(err)
+    );
+  };
+
   return new Promise<T>(async (resolve, reject) => {
+    let isAborted = false;
+
     if (abortSignal) {
       if (abortSignal.aborted) {
         reject(new AbortFsError(abortSignal.reason));
@@ -54,6 +101,7 @@ export const promise = <T = void>(
       }
 
       abortSignal.addEventListener("abort", () => {
+        isAborted = true;
         cancellable!.cancel();
         reject(new AbortFsError(abortSignal.reason));
       });
@@ -64,14 +112,17 @@ export const promise = <T = void>(
         try {
           callback.apply(null, args);
         } catch (err) {
-          reject(err);
+          if (BreakPointError.isBreakPointError(err)) {
+            return;
+          }
+          reject(parseError(err));
         }
       }) as F;
     };
 
-    const breakPoint = abortSignal
+    const breakpoint = abortSignal
       ? () => {
-          if (abortSignal.aborted) {
+          if (isAborted) {
             throw new BreakPointError(
               "Breakpoint was reached after operation was aborted."
             );
@@ -82,13 +133,16 @@ export const promise = <T = void>(
     try {
       await callback({
         resolve,
-        reject,
+        reject: (e) => reject(parseError(e)),
         subCall,
-        breakPoint,
+        breakpoint,
         cancellable,
       });
     } catch (err) {
-      reject(err);
+      if (BreakPointError.isBreakPointError(err)) {
+        return;
+      }
+      reject(parseError(err));
     }
   });
 };

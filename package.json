@@ -1,8 +1,10 @@
 {
   "packageManager": "yarn@1.22.19",
   "devDependencies": {
+    "@ncpa0cpl/nodepack": "^2.1.2",
     "@typescript-eslint/eslint-plugin": "^5.59.2",
     "@typescript-eslint/parser": "^5.59.2",
+    "esbuild": "^0.17.18",
     "eslint": "^8.40.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^4.2.1",
@@ -22,7 +24,7 @@
     "test:lint": "eslint ./src",
     "test:prettier": "prettier -c ./src",
     "test:tsc": "tsc --noEmit",
-    "build": "tsc"
+    "build": "node ./scripts/build.mjs"
   },
   "keywords": [],
   "repository": {
@@ -33,5 +35,8 @@
   "author": {
     "name": "Szymon Bretner",
     "email": ""
+  },
+  "dependencies": {
+    "@ncpa0cpl/mutex.js": "^1.0.1"
   }
 }
