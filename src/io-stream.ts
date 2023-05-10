@@ -22,18 +22,21 @@ class IOStream {
     type: IOStreamType,
     options?: IOStreamOptions
   ) {
-    const file = Fs.file(path, options?.cwd);
-    const stream = new IOStream(file, options);
+    return promise<IOStream>("IOStream.open", null, async (p) => {
+      const file = Fs.file(path, options?.cwd);
+      const stream = new IOStream(file, options);
 
-    await stream._init(type);
+      await stream._init(type);
 
-    return stream;
+      return p.resolve(stream);
+    });
   }
 
   private _options;
   private _stream?: Gio.FileIOStream;
   private _state: "OPEN" | "CLOSED" = "OPEN";
   private _mutex = new Mutex();
+  private _type!: IOStreamType;
 
   private constructor(private gioFile: Gio.File, options?: IOStreamOptions) {
     this._options = OptionsResolver(options);
@@ -51,6 +54,10 @@ class IOStream {
     return this._stream?.get_etag();
   }
 
+  public get type() {
+    return this._type;
+  }
+
   /**
    * Whether the Output Stream is currently in the process of
    * closing.
@@ -61,6 +68,7 @@ class IOStream {
 
   private async _init(type: IOStreamType) {
     const opt = this._options;
+    this._type = type;
 
     switch (type) {
       case "CREATE":
@@ -172,13 +180,20 @@ class IOStream {
     try {
       const opt = this._options;
 
-      return await promise<number>("IOStream.write", null, (p) => {
+      return await promise("IOStream.write", null, (p) => {
         this._stream!.output_stream.write_bytes_async(
           GLib.Bytes.new(content),
           opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
           null,
           p.subCall((_, result: Gio.AsyncResult) => {
-            p.resolve(this._stream!.output_stream.write_bytes_finish(result));
+            const bytesWritten =
+              this._stream!.output_stream.write_bytes_finish(result);
+
+            if (bytesWritten === -1) {
+              p.reject(new FsError("Failed to write to stream."));
+            } else {
+              p.resolve();
+            }
           })
         );
       });

@@ -4,3 +4,5 @@
 /yarn-error.log
 /.yarn/cache
 /.yarn/install-state.gz
+/__tests__/fs-test-tmp
+/__tests__/sync-fs-test-tmp

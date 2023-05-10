@@ -7,7 +7,10 @@ import type { IOStreamOptions, IOStreamType } from "./io-stream";
 import { IOStream } from "./io-stream";
 import { OptionsResolver } from "./option-resolver";
 import { isAbsolute, join } from "./path";
+import type { FilePermission } from "./permission-parser";
+import { parseFilePermission } from "./permission-parser";
 import { promise } from "./promise";
+import { SyncFs, sync } from "./sync-fs";
 
 interface FsOperationOptions {
   abortSignal?: AbortSignal;
@@ -65,10 +68,11 @@ interface CopyFileOptions extends MoveFileOptions {
 }
 
 interface DeleteFileOptions extends FsOperationOptions {
-  moveToTrash?: boolean;
+  trash?: boolean;
   ioPriority?: number;
   /** Not implemented yet. */
   recursive?: boolean;
+  queryInfoFlags?: Gio.FileQueryInfoFlags;
 }
 
 interface MakeDirOptions extends FsOperationOptions {
@@ -89,97 +93,6 @@ interface ChownOptions extends FsOperationOptions {
   ioPriority?: number;
 }
 
-type FilePermission =
-  | number
-  | string
-  | {
-      owner: {
-        read: boolean;
-        write: boolean;
-        execute: boolean;
-      };
-      group: {
-        read: boolean;
-        write: boolean;
-        execute: boolean;
-      };
-      others: {
-        read: boolean;
-        write: boolean;
-        execute: boolean;
-      };
-    };
-
-const parseFilePermission = (permission: FilePermission) => {
-  switch (typeof permission) {
-    case "number":
-      return permission;
-    case "string": {
-      const p: FilePermission = {
-        owner: {
-          read: permission[0] === "r",
-          write: permission[1] === "w",
-          execute: permission[2] === "x",
-        },
-        group: {
-          read: permission[3] === "r",
-          write: permission[4] === "w",
-          execute: permission[5] === "x",
-        },
-        others: {
-          read: permission[6] === "r",
-          write: permission[7] === "w",
-          execute: permission[8] === "x",
-        },
-      };
-      permission = p;
-    }
-    case "object": {
-      let mode = 0;
-
-      if (permission.owner.read) {
-        mode |= 0o400;
-      }
-
-      if (permission.owner.write) {
-        mode |= 0o200;
-      }
-
-      if (permission.owner.execute) {
-        mode |= 0o100;
-      }
-
-      if (permission.group.read) {
-        mode |= 0o40;
-      }
-
-      if (permission.group.write) {
-        mode |= 0o20;
-      }
-
-      if (permission.group.execute) {
-        mode |= 0o10;
-      }
-
-      if (permission.others.read) {
-        mode |= 0o4;
-      }
-
-      if (permission.others.write) {
-        mode |= 0o2;
-      }
-
-      if (permission.others.execute) {
-        mode |= 0o1;
-      }
-
-      return mode;
-    }
-    default:
-      throw new Error("Invalid permission type.");
-  }
-};
-
 interface FsOptions {
   cwd?: string;
 }
@@ -187,32 +100,51 @@ interface FsOptions {
 class Fs {
   // #region Static
 
+  static get sync() {
+    return SyncFs;
+  }
+
   private static globalInstance = new Fs();
 
+  /** Creates a new Gio.File instance for the given path. */
   public static file(path: string, cwd?: string) {
     return Fs.globalInstance.file(path, cwd);
   }
 
+  /** Checks if a file or directory exists. */
   public static fileExists(path: string, options?: FileExistsOptions) {
     return Fs.globalInstance.fileExists(path, options);
   }
 
+  /** Lists all the contents of a directory. */
   public static listDir(path: string, options?: ListDirOptions) {
     return Fs.globalInstance.listDir(path, options);
   }
 
+  /** Gets information about a specific file or directory. */
   public static fileInfo(path: string, options?: FileInfoOptions) {
     return Fs.globalInstance.fileInfo(path, options);
   }
 
+  /**
+   * Reads the content of a file under the given path.
+   *
+   * @returns A Promise with a byte array of the contents.
+   */
   public static readFile(path: string, options?: ReadFileOptions) {
     return Fs.globalInstance.readFile(path, options);
   }
 
+  /**
+   * Reads the content of a file under the given path using the
+   * `readFile()` method and decodes that content to string using
+   * the given encoding.
+   */
   public static readTextFile(path: string, options?: ReadTextFileOptions) {
     return Fs.globalInstance.readTextFile(path, options);
   }
 
+  /** Writes the given data to a file under the given path. */
   public static writeFile(
     path: string,
     data: Uint8Array,
@@ -221,6 +153,11 @@ class Fs {
     return Fs.globalInstance.writeFile(path, data, options);
   }
 
+  /**
+   * Encodes given string into a byte array (UTF-8), and writes
+   * that data to a file under the given path using the
+   * `writeFile()` method.
+   */
   public static writeTextFile(
     path: string,
     data: string,
@@ -229,6 +166,7 @@ class Fs {
     return Fs.globalInstance.writeTextFile(path, data, options);
   }
 
+  /** Appends the given data to a file under the given path. */
   public static appendFile(
     path: string,
     data: Uint8Array,
@@ -237,6 +175,11 @@ class Fs {
     return Fs.globalInstance.appendFile(path, data, options);
   }
 
+  /**
+   * Encodes given string into a byte array (UTF-8), and appends
+   * that data to a file under the given path using the
+   * `appendFile()` method.
+   */
   public static appendTextFile(
     path: string,
     data: string,
@@ -245,6 +188,7 @@ class Fs {
     return Fs.globalInstance.appendTextFile(path, data, options);
   }
 
+  /** Moves a file or directory from one path to another. */
   public static moveFile(
     source: string,
     destination: string,
@@ -253,6 +197,7 @@ class Fs {
     return Fs.globalInstance.moveFile(source, destination, options);
   }
 
+  /** Alias for the `moveFile()` method. */
   public static renameFile(
     source: string,
     destination: string,
@@ -261,6 +206,7 @@ class Fs {
     return Fs.globalInstance.renameFile(source, destination, options);
   }
 
+  /** Copies a file or directory from one path to another. */
   public static copyFile(
     source: string,
     destination: string,
@@ -269,18 +215,48 @@ class Fs {
     return Fs.globalInstance.copyFile(source, destination, options);
   }
 
+  /**
+   * Deletes a file or directory from under the given path.
+   *
+   * If `trash` is set to `true`, the file will be moved to the
+   * user's trash directory instead of being deleted.
+   */
   public static deleteFile(path: string, options?: DeleteFileOptions) {
     return Fs.globalInstance.deleteFile(path, options);
   }
 
+  /** Creates a new directory under the given path. */
   public static makeDir(path: string, options?: MakeDirOptions) {
     return Fs.globalInstance.makeDir(path, options);
   }
 
-  public static makeLink(from: string, to: string, options?: MakeLinkOptions) {
-    return Fs.globalInstance.makeLink(from, to, options);
+  /**
+   * Creates a symbolic link file undef the path given in the
+   * first parameter, created link will point to a file or
+   * directory that's provided as the second parameter.
+   *
+   * @param linkPath The path to the new link file.
+   * @param pointingTo Link destination file.
+   * @param option Options for the operation.
+   */
+  public static makeLink(
+    linkPath: string,
+    pointingTo: string,
+    options?: MakeLinkOptions
+  ) {
+    return Fs.globalInstance.makeLink(linkPath, pointingTo, options);
   }
 
+  /**
+   * Changes the UNIX permissions of a file or directory.
+   *
+   * The provided mode can be either:
+   *
+   * - A number representing the octal value of the permissions
+   *   (ex. `0o755`)
+   * - A string in the rwx format (ex. `rwxrw-r--`)
+   * - An object describing all the permissions
+   */
   public static chmod(
     path: string,
     mode: FilePermission,
@@ -289,6 +265,7 @@ class Fs {
     return Fs.globalInstance.chmod(path, mode, options);
   }
 
+  /** Changes the owner and group of a file or directory. */
   public static chown(
     path: string,
     uid: number,
@@ -322,6 +299,8 @@ class Fs {
   constructor(options?: FsOptions) {
     this._cwd = options?.cwd ?? null;
 
+    this.resolvePath = sync("resolvePath", this.resolvePath.bind(this));
+    this.file = sync("file", this.file.bind(this));
     this.deleteFile = this.deleteFile.bind(this);
     this.moveFile = this.moveFile.bind(this);
     this.renameFile = this.renameFile.bind(this);
@@ -332,7 +311,6 @@ class Fs {
     this.readTextFile = this.readTextFile.bind(this);
     this.listDir = this.listDir.bind(this);
     this.fileInfo = this.fileInfo.bind(this);
-    this.file = this.file.bind(this);
     this.makeDir = this.makeDir.bind(this);
     this.makeLink = this.makeLink.bind(this);
     this.chmod = this.chmod.bind(this);
@@ -343,14 +321,20 @@ class Fs {
     this.openIOStream = this.openIOStream.bind(this);
   }
 
-  public file(path: string, cwd?: string) {
+  private resolvePath(path: string, cwd?: string) {
     const isRelative = !isAbsolute(path);
     if (isRelative) {
       path = join(cwd ?? this._cwd ?? GLib.get_current_dir(), path);
     }
-    return Gio.File.new_for_path(path);
+    return path;
   }
 
+  /** Creates a new Gio.File instance for the given path. */
+  public file(path: string, cwd?: string) {
+    return Gio.File.new_for_path(this.resolvePath(path, cwd));
+  }
+
+  /** Checks if a file or directory exists. */
   public fileExists(path: string, options?: FileExistsOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options);
@@ -373,6 +357,7 @@ class Fs {
     });
   }
 
+  /** Lists all the contents of a directory. */
   public listDir(path: string, options?: ListDirOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options);
@@ -392,7 +377,13 @@ class Fs {
             p2.cancellable,
             p2.subCall((_, result: Gio.AsyncResult) => {
               const enumerator = file.enumerate_children_finish(result);
-              p2.resolve(enumerator);
+              if (enumerator) {
+                p2.resolve(enumerator);
+              } else {
+                p2.reject(
+                  new FsError(`Failed to list directory: ${file.get_path()}`)
+                );
+              }
             })
           );
         }
@@ -407,7 +398,7 @@ class Fs {
             ioPriority,
             p3.cancellable,
             p3.subCall((_, result: Gio.AsyncResult) => {
-              p3.resolve(enumerator.next_files_finish(result));
+              p3.resolve(enumerator.next_files_finish(result) ?? []);
             })
           );
         });
@@ -438,6 +429,7 @@ class Fs {
     });
   }
 
+  /** Gets information about a specific file or directory. */
   public fileInfo(path: string, options?: FileInfoOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options);
@@ -454,12 +446,23 @@ class Fs {
         p.cancellable,
         p.subCall((_, result: Gio.AsyncResult) => {
           const ginfo = file.query_info_finish(result);
-          p.resolve(new FileInfo(file.get_path()!, ginfo));
+          if (ginfo) {
+            p.resolve(new FileInfo(file.get_path()!, ginfo));
+          } else {
+            p.reject(
+              new FsError(`Failed to get file info: ${file.get_path()}`)
+            );
+          }
         })
       );
     });
   }
 
+  /**
+   * Reads the content of a file under the given path.
+   *
+   * @returns A Promise with a byte array of the contents.
+   */
   public readFile(path: string, options?: ReadFileOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options);
@@ -479,6 +482,11 @@ class Fs {
     });
   }
 
+  /**
+   * Reads the content of a file under the given path using the
+   * `readFile()` method and decodes that content to string using
+   * the given encoding.
+   */
   public readTextFile(path: string, options?: ReadTextFileOptions) {
     const opt = OptionsResolver(options);
 
@@ -488,6 +496,7 @@ class Fs {
     });
   }
 
+  /** Writes the given data to a file under the given path. */
   public writeFile(
     path: string,
     contents: Uint8Array,
@@ -496,25 +505,77 @@ class Fs {
     const file = this.file(path);
     const opt = OptionsResolver(options);
 
-    return promise("writeFile", opt.get("abortSignal"), (p) => {
-      file.replace_contents_async(
-        contents,
-        opt.get("etag", null),
-        opt.get("makeBackup", false),
-        opt.get("createFlags", Gio.FileCreateFlags.NONE),
-        p.cancellable,
-        p.subCall((_, result: Gio.AsyncResult) => {
-          const [success] = file.replace_contents_finish(result);
-          if (success) {
-            p.resolve();
-          } else {
-            p.reject(new FsError(`Failed to write file: ${file.get_path()}`));
+    return promise("writeFile", opt.get("abortSignal"), async (p) => {
+      if (contents.byteLength === 0) {
+        const stream = await promise<Gio.FileOutputStream>(
+          "writeFile",
+          opt.get("abortSignal"),
+          (p2) => {
+            file.replace_async(
+              opt.get("etag", null),
+              opt.get("makeBackup", false),
+              opt.get("createFlags", Gio.FileCreateFlags.NONE),
+              GLib.PRIORITY_DEFAULT,
+              p.cancellable,
+              p.subCall((_, result: Gio.AsyncResult) => {
+                const stream = file.replace_finish(result);
+                if (stream) {
+                  p2.resolve(stream);
+                } else {
+                  p2.reject(
+                    new FsError(`Failed to write file: ${file.get_path()}`)
+                  );
+                }
+              })
+            );
           }
-        })
-      );
+        );
+
+        try {
+          stream.truncate(0, null);
+        } finally {
+          await promise("writeFile", null, (p3) => {
+            stream.close_async(
+              GLib.PRIORITY_DEFAULT,
+              null,
+              p3.subCall((_, result: Gio.AsyncResult) => {
+                const success = stream.close_finish(result);
+                if (success) {
+                  p3.resolve();
+                } else {
+                  p3.reject(new FsError("Failed to close stream."));
+                }
+              })
+            );
+          });
+        }
+
+        p.resolve();
+      } else {
+        file.replace_contents_async(
+          contents,
+          opt.get("etag", null),
+          opt.get("makeBackup", false),
+          opt.get("createFlags", Gio.FileCreateFlags.NONE),
+          p.cancellable,
+          p.subCall((_, result: Gio.AsyncResult) => {
+            const [success] = file.replace_contents_finish(result);
+            if (success) {
+              p.resolve();
+            } else {
+              p.reject(new FsError(`Failed to write file: ${file.get_path()}`));
+            }
+          })
+        );
+      }
     });
   }
 
+  /**
+   * Encodes given string into a byte array (UTF-8), and writes
+   * that data to a file under the given path using the
+   * `writeFile()` method.
+   */
   public writeTextFile(
     path: string,
     contents: string,
@@ -527,6 +588,7 @@ class Fs {
     return this.writeFile(path, data, options);
   }
 
+  /** Appends the given data to a file under the given path. */
   public appendFile(
     path: string,
     contents: Uint8Array,
@@ -546,7 +608,13 @@ class Fs {
             p2.cancellable,
             p2.subCall((_, result: Gio.AsyncResult) => {
               const outputStream = file.append_to_finish(result);
-              p2.resolve(outputStream);
+              if (outputStream) {
+                p2.resolve(outputStream);
+              } else {
+                p2.reject(
+                  new FsError(`Failed to append to file: ${file.get_path()}`)
+                );
+              }
             })
           );
         }
@@ -561,7 +629,12 @@ class Fs {
             opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
             p3.cancellable,
             p3.subCall((_, result: Gio.AsyncResult) => {
-              p3.resolve(void stream.write_bytes_finish(result));
+              const bytesWritten = stream.write_bytes_finish(result);
+              if (bytesWritten === -1) {
+                p3.reject(new FsError("Failed to write to stream."));
+              } else {
+                p3.resolve();
+              }
             })
           );
         });
@@ -586,6 +659,11 @@ class Fs {
     });
   }
 
+  /**
+   * Encodes given string into a byte array (UTF-8), and appends
+   * that data to a file under the given path using the
+   * `appendFile()` method.
+   */
   public appendTextFile(
     path: string,
     contents: string,
@@ -598,6 +676,7 @@ class Fs {
     return this.appendFile(path, data, options);
   }
 
+  /** Moves a file or directory from one path to another. */
   public moveFile(
     sourcePath: string,
     destinationPath: string,
@@ -630,6 +709,7 @@ class Fs {
     });
   }
 
+  /** Alias for the `moveFile()` method. */
   public renameFile(
     sourcePath: string,
     destinationPath: string,
@@ -638,6 +718,7 @@ class Fs {
     return this.moveFile(sourcePath, destinationPath, options);
   }
 
+  /** Copies a file or directory from one path to another. */
   public copyFile(
     sourcePath: string,
     destinationPath: string,
@@ -671,12 +752,18 @@ class Fs {
     });
   }
 
+  /**
+   * Deletes a file or directory from under the given path.
+   *
+   * If `trash` is set to `true`, the file will be moved to the
+   * user's trash directory instead of being deleted.
+   */
   public deleteFile(path: string, options?: DeleteFileOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options);
 
     return promise("deleteFile", opt.get("abortSignal"), async (p) => {
-      if (opt.get("moveToTrash", false)) {
+      if (opt.get("trash", false)) {
         file.trash_async(
           opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
           p.cancellable,
@@ -723,6 +810,7 @@ class Fs {
     });
   }
 
+  /** Creates a new directory under the given path. */
   public makeDir(path: string, options?: MakeDirOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options);
@@ -746,24 +834,26 @@ class Fs {
   }
 
   /**
-   * Creates a symbolic link.
+   * Creates a symbolic link file undef the path given in the
+   * first parameter, created link will point to a file or
+   * directory that's provided as the second parameter.
    *
-   * @param linkToFile The file this link will be pointing to.
-   * @param linkPath The path to the link itself.
+   * @param linkPath The path to the new link file.
+   * @param pointingTo Link destination file.
    * @param option Options for the operation.
    */
   public makeLink(
-    linkToFile: string,
     linkPath: string,
+    pointingTo: string,
     option?: MakeLinkOptions
   ) {
-    const srcFile = this.file(linkToFile);
     const linkFile = this.file(linkPath);
+    const dest = this.resolvePath(pointingTo);
     const opt = OptionsResolver(option);
 
     return promise("makeLink", opt.get("abortSignal"), (p) => {
       linkFile.make_symbolic_link_async(
-        srcFile.get_path()!,
+        dest,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
         p.subCall((_, result: Gio.AsyncResult) => {
@@ -773,7 +863,7 @@ class Fs {
           } else {
             p.reject(
               new FsError(
-                `Failed to create symbolic link: ${linkFile.get_path()} -> ${srcFile.get_path()}`
+                `Failed to create symbolic link: ${linkFile.get_path()} -> ${dest}`
               )
             );
           }
@@ -782,13 +872,22 @@ class Fs {
     });
   }
 
+  /**
+   * Changes the UNIX permissions of a file or directory.
+   *
+   * The provided mode can be either:
+   *
+   * - A number representing the octal value of the permissions
+   *   (ex. `0o755`)
+   * - A string in the rwx format (ex. `rwxrw-r--`)
+   * - An object describing all the permissions
+   */
   public chmod(path: string, mode: FilePermission, options?: ChmodOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options);
 
     return promise("chmod", opt.get("abortSignal"), async (p) => {
-      const { _gioInfo: info } = await this.fileInfo(path, options);
-      p.breakpoint();
+      const info = Gio.FileInfo.new();
 
       info.set_attribute_uint32("unix::mode", parseFilePermission(mode));
 
@@ -798,13 +897,22 @@ class Fs {
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
         p.subCall((_, result: Gio.AsyncResult) => {
-          file.set_attributes_finish(result);
-          p.resolve();
+          const [success] = file.set_attributes_finish(result);
+          if (success) {
+            p.resolve();
+          } else {
+            p.reject(
+              new FsError(
+                `Failed to change file permissions: ${file.get_path()}`
+              )
+            );
+          }
         })
       );
     });
   }
 
+  /** Changes the owner and group of a file or directory. */
   public chown(path: string, uid: number, gid: number, options?: ChownOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options);
@@ -822,8 +930,15 @@ class Fs {
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
         p.subCall((_, result: Gio.AsyncResult) => {
-          file.set_attributes_finish(result);
-          p.resolve();
+          const [success] = file.set_attributes_finish(result);
+
+          if (success) {
+            p.resolve();
+          } else {
+            p.reject(
+              new FsError(`Failed to change file owner: ${file.get_path()}`)
+            );
+          }
         })
       );
     });

@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES6",
+    "moduleResolution": "node",
+    "downlevelIteration": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "typeRoots": [
+      "../node_modules/gjs-esm-types",
+      "../node_modules/@types"
+    ]
+  }
+}

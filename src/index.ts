@@ -22,9 +22,27 @@ import type {
 import { Fs } from "./fs";
 import type { IOStreamOptions, IOStreamType } from "./io-stream";
 import { IOStream } from "./io-stream";
+import type {
+  SyncAppendFileOptions,
+  SyncAppendTextFileOptions,
+  SyncChmodOptions,
+  SyncChownOptions,
+  SyncCopyFileOptions,
+  SyncDeleteFileOptions,
+  SyncFileInfoOptions,
+  SyncListDirOptions,
+  SyncMoveFileOptions,
+  SyncReadFileOptions,
+  SyncReadTextFileOptions,
+  SyncWriteFileOptions,
+  SyncWriteTextFileOptions,
+} from "./sync-fs";
+import { SyncFs } from "./sync-fs";
+import type { SyncIOStreamOptions } from "./sync-io-stream";
+import { SyncIOStream } from "./sync-io-stream";
 
 export default Fs;
-export { Fs, FileInfo, FsError, IOStream };
+export { Fs, SyncFs, FileInfo, FsError, IOStream, SyncIOStream };
 export type {
   AppendFileOptions,
   AppendTextFileOptions,
@@ -45,4 +63,18 @@ export type {
   Encoding,
   IOStreamOptions,
   IOStreamType,
+  SyncAppendFileOptions,
+  SyncAppendTextFileOptions,
+  SyncChmodOptions,
+  SyncChownOptions,
+  SyncCopyFileOptions,
+  SyncDeleteFileOptions,
+  SyncFileInfoOptions,
+  SyncListDirOptions,
+  SyncMoveFileOptions,
+  SyncReadFileOptions,
+  SyncReadTextFileOptions,
+  SyncWriteFileOptions,
+  SyncWriteTextFileOptions,
+  SyncIOStreamOptions,
 };

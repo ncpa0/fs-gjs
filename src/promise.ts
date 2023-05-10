@@ -1,5 +1,6 @@
 import Gio from "gi://Gio?version=2.0";
 import { FsError } from "./errors";
+import { parseFsError } from "./parse-fs-error";
 
 type PromiseApi<T> = {
   /** Resolves this promise with the given value. */
@@ -41,11 +42,6 @@ class BreakPointError extends FsError {
   }
 }
 
-declare class GioIOError {
-  message?: string;
-  stack?: string;
-}
-
 export const promise = <T = void>(
   name: string,
   abortSignal: AbortSignal | undefined | null,
@@ -56,40 +52,6 @@ export const promise = <T = void>(
   if (abortSignal) {
     cancellable = Gio.Cancellable.new();
   }
-
-  const parseError = (err: any): FsError => {
-    if (err instanceof Error) {
-      if (!FsError.isFsError(err)) {
-        err = FsError.from(err);
-      }
-      err.addMessagePrefix(`'${name}' has failed`);
-
-      return err;
-    } else if (typeof err === "object") {
-      if (err instanceof (Gio.IOErrorEnum as any as typeof GioIOError)) {
-        const msg = err.message;
-        const stack = err.stack;
-
-        err = new FsError(msg ?? "");
-        err.stack = stack;
-
-        err.addMessagePrefix(`'${name}' has failed`);
-
-        return err;
-      } else if (err.stack) {
-        const stack = err.stack;
-        err = new FsError(
-          `'${name}' has failed due to an error.\n` + String(err)
-        );
-        err.stack = stack;
-
-        return err;
-      }
-    }
-    return new FsError(
-      `'${name}' has failed due to an unknown error.\n` + String(err)
-    );
-  };
 
   return new Promise<T>(async (resolve, reject) => {
     let isAborted = false;
@@ -115,7 +77,7 @@ export const promise = <T = void>(
           if (BreakPointError.isBreakPointError(err)) {
             return;
           }
-          reject(parseError(err));
+          reject(parseFsError(name, err));
         }
       }) as F;
     };
@@ -133,7 +95,7 @@ export const promise = <T = void>(
     try {
       await callback({
         resolve,
-        reject: (e) => reject(parseError(e)),
+        reject: (e) => reject(parseFsError(name, e)),
         subCall,
         breakpoint,
         cancellable,
@@ -142,7 +104,7 @@ export const promise = <T = void>(
       if (BreakPointError.isBreakPointError(err)) {
         return;
       }
-      reject(parseError(err));
+      reject(parseFsError(name, err));
     }
   });
 };

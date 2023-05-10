@@ -16,7 +16,7 @@ export class FileInfo {
   }
 
   get isFile() {
-    return this._fileType === Gio.FileType.REGULAR;
+    return this.isSymlink ? false : this._fileType === Gio.FileType.REGULAR;
   }
 
   get isSymlink() {
