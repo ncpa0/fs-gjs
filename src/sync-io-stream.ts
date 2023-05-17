@@ -131,6 +131,10 @@ class SyncIOStream {
   }
 
   public write(content: Uint8Array) {
+    if (content.byteLength === 0) {
+      return;
+    }
+
     const bytesWritten = this._stream!.output_stream.write_bytes(
       GLib.Bytes.new(content),
       null

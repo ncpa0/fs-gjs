@@ -598,6 +598,11 @@ class Fs {
     const opt = OptionsResolver(options);
 
     return promise("appendFile", opt.get("abortSignal"), async (p) => {
+      if (contents.byteLength === 0) {
+        p.resolve();
+        return;
+      }
+
       const stream = await promise<Gio.FileOutputStream>(
         "appendFile",
         opt.get("abortSignal"),

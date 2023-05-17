@@ -177,6 +177,10 @@ class IOStream {
   public async write(content: Uint8Array) {
     await this._mutex.acquire();
 
+    if (content.byteLength === 0) {
+      return;
+    }
+
     try {
       const opt = this._options;
 
@@ -260,6 +264,21 @@ class IOStream {
     } finally {
       this._mutex.release();
     }
+  }
+
+  /**
+   * Returns a promise that resolves once all currently pending
+   * operations have finished.
+   *
+   * @example
+   *   stream.write("Hello");
+   *   stream.write("World");
+   *   stream.write("!");
+   *   await stream.finishPending(); // Waits for all above writes to finish.
+   */
+  public async finishPending() {
+    await this._mutex.acquire();
+    this._mutex.release();
   }
 
   public async close() {
