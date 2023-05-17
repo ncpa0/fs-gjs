@@ -209,14 +209,12 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@reactgjs/gest@^0.2.0":
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/@reactgjs/gest/-/gest-0.2.0.tgz#7dd9fb0fa4564d451bab3105fefd3c21c5371d1f"
-  integrity sha512-2W7fx0erK/gwVwTPpHy8LPwWKfjvwOoaLSJyBjt+igkWnawQtolmtAl2T9Nrn+s+yOZ5gZHtgqVA/zqNE6D2Bw==
+"@reactgjs/gest@0.3.0":
+  version "0.3.0"
+  resolved "https://registry.yarnpkg.com/@reactgjs/gest/-/gest-0.3.0.tgz#49f0502eed1e152ef5d531f13b8aac5f98a440ba"
+  integrity sha512-qGmodozTT1Yz1U/BxG8jsghzXk/6R0Qevh62BET8/YR1o+eE/qKdKXiIyeUF7ol0XNF0Z1it12KVBGQl9u8gWQ==
   dependencies:
-    dilswer "^2.0.2"
     esbuild "^0.17.17"
-    termx-markup "^1.1.0"
 
 "@ts-morph/bootstrap@^0.19.0":
   version "0.19.0"
@@ -588,7 +586,7 @@ diff@^5.0.0:
   resolved "https://registry.yarnpkg.com/diff/-/diff-5.1.0.tgz#bc52d298c5ea8df9194800224445ed43ffc87e40"
   integrity sha512-D+mk+qE8VC/PAUrlAU34N+VfXev0ghe5ywmpqrawphmVZc1bEfn56uo9qpyGp1p4xpzOHkSW4ztBd6L7Xx4ACw==
 
-dilswer@2.0.2, dilswer@^2.0.2:
+dilswer@2.0.2:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/dilswer/-/dilswer-2.0.2.tgz#c9b22e1f3e11eb69cbc446510e91fc959b24934e"
   integrity sha512-Sv4GdHhkvtwrND1Gc2VJMeBRqmSQea05XxRmJubOpKBk8E8V/8tRNCJSCsV4O6EVThovSjYivqYuD6cwhABktw==
@@ -2036,11 +2034,6 @@ supports-color@^7.1.0:
   integrity sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==
   dependencies:
     has-flag "^4.0.0"
-
-termx-markup@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/termx-markup/-/termx-markup-1.1.0.tgz#4f840ee278bc205a2add2c4f2fd9b4eddceb0e5e"
-  integrity sha512-ufJlF0TnQh3CeQXNn4I3QFHFEzSzi65BMhXAkgzvoJpnm9vkhqQtw7KqroYwqavO1PhIQmZA2SHi8rzgpfNQFg==
 
 text-table@^0.2.0:
   version "0.2.0"
