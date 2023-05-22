@@ -3,8 +3,15 @@ import Gio from "gi://Gio?version=2.0";
 import type { Encoding } from "./encoding";
 import { FsError } from "./errors";
 import { FileInfo } from "./file-info";
+import type {
+  FileCopyFlagOptions,
+  FileCreateFlagOptions,
+  FileQueryFlagOptions,
+} from "./flags";
+import { getCopyFileFlag, getCreateFileFlag, getQueryFileFlag } from "./flags";
 import type { IOStreamOptions, IOStreamType } from "./io-stream";
 import { OptionsResolver } from "./option-resolver";
+import { OptValidators } from "./option-validators";
 import { parseFsError } from "./parse-fs-error";
 import { isAbsolute, join } from "./path";
 import type { FilePermission } from "./permission-parser";
@@ -12,61 +19,63 @@ import { parseFilePermission } from "./permission-parser";
 import type { SyncIOStreamOptions } from "./sync-io-stream";
 import { SyncIOStream } from "./sync-io-stream";
 
+type Tail<T extends any[]> = T extends [any, ...infer U] ? U : [];
+
+type Mixin<T extends any[]> = T["length"] extends 0
+  ? {}
+  : Mixin<Tail<T>> & T[0];
+
 interface SyncFsOperationOptions {}
 
-interface SyncListDirOptions extends SyncFsOperationOptions {
+interface SyncListDirOptions
+  extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {
   attributes?: string;
-  queryInfoFlags?: Gio.FileQueryInfoFlags;
   batchSize?: number;
 }
 
-interface SyncFileInfoOptions extends SyncFsOperationOptions {
-  followSymlinks?: boolean;
-}
+interface SyncFileInfoOptions
+  extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {}
 
-interface SyncReadFileOptions extends SyncFsOperationOptions {}
+interface SyncReadFileOptions extends Mixin<[SyncFsOperationOptions]> {}
 
-interface SyncReadTextFileOptions extends SyncReadFileOptions {
+interface SyncReadTextFileOptions extends Mixin<[SyncReadFileOptions]> {
   encoding?: Encoding;
 }
 
-interface SyncWriteFileOptions extends SyncFsOperationOptions {
+interface SyncWriteFileOptions
+  extends Mixin<[SyncFsOperationOptions, FileCreateFlagOptions]> {
   etag?: string;
   makeBackup?: boolean;
-  createFlags?: Gio.FileCreateFlags;
 }
 
-interface SyncAppendFileOptions extends SyncWriteFileOptions {
-  fileCreateFlags?: Gio.FileCreateFlags;
-}
+interface SyncAppendFileOptions
+  extends Mixin<[SyncWriteFileOptions, FileCreateFlagOptions]> {}
 
-interface SyncAppendTextFileOptions extends SyncAppendFileOptions {}
+interface SyncAppendTextFileOptions extends Mixin<[SyncAppendFileOptions]> {}
 
-interface SyncWriteTextFileOptions extends SyncWriteFileOptions {}
+interface SyncWriteTextFileOptions extends Mixin<[SyncWriteFileOptions]> {}
 
-interface SyncMoveFileOptions extends SyncFsOperationOptions {
-  fileCopyFlags?: Gio.FileCopyFlags;
+interface SyncMoveFileOptions
+  extends Mixin<[SyncFsOperationOptions, FileCopyFlagOptions]> {
   onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
 }
 
-interface SyncCopyFileOptions extends SyncMoveFileOptions {
-  fileCopyFlags?: Gio.FileCopyFlags;
+interface SyncCopyFileOptions
+  extends Mixin<[SyncMoveFileOptions, FileCopyFlagOptions]> {
   onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
 }
 
-interface SyncDeleteFileOptions extends SyncFsOperationOptions {
+interface SyncDeleteFileOptions
+  extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {
   trash?: boolean;
   recursive?: boolean;
-  queryInfoFlags?: Gio.FileQueryInfoFlags;
 }
 
-interface SyncChmodOptions extends SyncFsOperationOptions {
-  queryInfoFlags?: Gio.FileQueryInfoFlags;
-}
+interface SyncChmodOptions
+  extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {}
 
-interface SyncChownOptions extends SyncFsOperationOptions {
-  queryInfoFlags?: Gio.FileQueryInfoFlags;
-}
+interface SyncChownOptions
+  extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {}
 
 interface SyncFsOptions {
   cwd?: string;
@@ -266,7 +275,7 @@ class SyncFs {
     type: IOStreamType,
     options?: IOStreamOptions
   ) {
-    return SyncFs.globalInstance.openIOStream(path, type, options);
+    return SyncFs.globalInstance.openFileIOStream(path, type, options);
   }
 
   // #endregion
@@ -280,7 +289,10 @@ class SyncFs {
 
     this.resolvePath = sync("resolvePath", this.resolvePath.bind(this));
     this.fileExists = sync("fileExists", this.fileExists.bind(this));
-    this.openIOStream = sync("openIOStream", this.openIOStream.bind(this));
+    this.openFileIOStream = sync(
+      "openIOStream",
+      this.openFileIOStream.bind(this)
+    );
     this.deleteFile = sync("deleteFile", this.deleteFile.bind(this));
     this.moveFile = sync("moveFile", this.moveFile.bind(this));
     this.renameFile = sync("renameFile", this.renameFile.bind(this));
@@ -325,11 +337,12 @@ class SyncFs {
   /** Lists all the contents of a directory. */
   public listDir(path: string, options?: SyncListDirOptions) {
     const dirFile = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
+    const queryFlag = getQueryFileFlag(opt);
 
     const enumerator = dirFile.enumerate_children(
       opt.get("attributes", "*"),
-      opt.get("queryInfoFlags", Gio.FileQueryInfoFlags.NONE),
+      queryFlag,
       null
     );
 
@@ -353,7 +366,7 @@ class SyncFs {
   /** Gets information about a specific file or directory. */
   public fileInfo(path: string, options?: SyncFileInfoOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     const flag = opt.get("followSymlinks", false)
       ? Gio.FileQueryInfoFlags.NONE
@@ -387,7 +400,7 @@ class SyncFs {
    * the given encoding.
    */
   public readTextFile(path: string, options?: SyncReadTextFileOptions) {
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     const contents = this.readFile(path);
 
@@ -402,13 +415,14 @@ class SyncFs {
     options?: SyncWriteFileOptions
   ) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
+    const createFlag = getCreateFileFlag(opt);
 
     if (contents.byteLength === 0) {
       const stream = file.replace(
         opt.get("etag", null),
         opt.get("makeBackup", false),
-        opt.get("createFlags", Gio.FileCreateFlags.NONE),
+        createFlag,
         null
       );
 
@@ -430,7 +444,7 @@ class SyncFs {
         contents,
         opt.get("etag", null),
         opt.get("makeBackup", false),
-        opt.get("createFlags", Gio.FileCreateFlags.NONE),
+        createFlag,
         null
       );
 
@@ -466,14 +480,13 @@ class SyncFs {
     options?: SyncAppendFileOptions
   ) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
+    const createFlag = getCreateFileFlag(opt);
 
-    const stream = file.append_to(
-      opt.get("fileCreateFlags", Gio.FileCreateFlags.NONE),
-      null
-    );
+    const stream = file.append_to(createFlag, null);
 
-    const bytesWritten = stream.write_bytes(GLib.Bytes.new(contents), null);
+    const bytes = GLib.Bytes.new(contents);
+    const bytesWritten = stream.write_bytes(bytes, null);
 
     if (bytesWritten === -1) {
       throw new FsError(`Failed to append file: ${file.get_path()}`);
@@ -511,11 +524,12 @@ class SyncFs {
   ) {
     const oldFile = this.file(sourcePath);
     const newFile = this.file(destinationPath);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
+    const copyFlag = getCopyFileFlag(opt);
 
     const success = oldFile.move(
       newFile,
-      opt.get("fileCopyFlags", Gio.FileCopyFlags.NONE),
+      copyFlag,
       null,
       opt.get("onProgress", null)
     );
@@ -546,11 +560,12 @@ class SyncFs {
   ) {
     const srcFile = this.file(sourcePath);
     const destFile = this.file(destinationPath);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
+    const copyFlag = getCopyFileFlag(opt);
 
     const success = srcFile.copy(
       destFile,
-      opt.get("fileCopyFlags", Gio.FileCopyFlags.NONE),
+      copyFlag,
       null,
       opt.get("onProgress", null)
     );
@@ -572,7 +587,7 @@ class SyncFs {
    */
   public deleteFile(path: string, options?: SyncDeleteFileOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     if (opt.get("trash", false)) {
       const success = file.trash(null);
@@ -649,12 +664,13 @@ class SyncFs {
    */
   public chmod(path: string, mode: FilePermission, options?: SyncChmodOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
+    const queryFlag = getQueryFileFlag(opt);
 
     const success = file.set_attribute_uint32(
       "unix::mode",
       parseFilePermission(mode),
-      opt.get("queryInfoFlags", Gio.FileQueryInfoFlags.NONE),
+      queryFlag,
       null
     );
 
@@ -675,12 +691,13 @@ class SyncFs {
     options?: SyncChownOptions
   ) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
+    const queryFlag = getQueryFileFlag(opt);
 
     const success = file.set_attribute_uint32(
       "unix::uid",
       uid,
-      opt.get("queryInfoFlags", Gio.FileQueryInfoFlags.NONE),
+      queryFlag,
       null
     );
 
@@ -691,7 +708,7 @@ class SyncFs {
     const success2 = file.set_attribute_uint32(
       "unix::gid",
       gid,
-      opt.get("queryInfoFlags", Gio.FileQueryInfoFlags.NONE),
+      queryFlag,
       null
     );
 
@@ -707,12 +724,12 @@ class SyncFs {
    * new file, open an existing one or overwrite an existing
    * one.
    */
-  public openIOStream(
+  public openFileIOStream(
     path: string,
     type: IOStreamType,
     options: SyncIOStreamOptions = {}
   ) {
-    return SyncIOStream.open(
+    return SyncIOStream.openFile(
       path,
       type,
       this._cwd ? { cwd: this._cwd, ...options } : options

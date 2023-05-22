@@ -23,3 +23,9 @@ export class FsError extends Error {
     this._isPrefixAdded = true;
   }
 }
+
+export class InvalidOptionError extends TypeError {
+  constructor(public name: string, public expectedType: any) {
+    super(`Invalid option: '${name}' - Expected a [${expectedType}].`);
+  }
+}

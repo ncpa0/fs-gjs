@@ -3,93 +3,104 @@ import Gio from "gi://Gio?version=2.0";
 import type { Encoding } from "./encoding";
 import { FsError } from "./errors";
 import { FileInfo } from "./file-info";
+import type {
+  FileCopyFlagOptions,
+  FileCreateFlagOptions,
+  FileQueryFlagOptions,
+} from "./flags";
+import { getCopyFileFlag, getCreateFileFlag, getQueryFileFlag } from "./flags";
 import type { IOStreamOptions, IOStreamType } from "./io-stream";
 import { IOStream } from "./io-stream";
 import { OptionsResolver } from "./option-resolver";
+import { OptValidators } from "./option-validators";
 import { isAbsolute, join } from "./path";
 import type { FilePermission } from "./permission-parser";
 import { parseFilePermission } from "./permission-parser";
 import { promise } from "./promise";
 import { SyncFs, sync } from "./sync-fs";
 
+type Tail<T extends any[]> = T extends [any, ...infer U] ? U : [];
+
+type Mixin<T extends any[]> = T["length"] extends 0
+  ? {}
+  : Mixin<Tail<T>> & T[0];
+
 interface FsOperationOptions {
   abortSignal?: AbortSignal;
 }
 
-interface ListDirOptions extends FsOperationOptions {
+interface ListDirOptions
+  extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
   attributes?: string;
-  queryInfoFlags?: Gio.FileQueryInfoFlags;
   ioPriority?: number;
-  abortSignal?: AbortSignal;
   batchSize?: number;
 }
 
-interface FileInfoOptions extends FsOperationOptions {
-  followSymlinks?: boolean;
+interface FileInfoOptions
+  extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
   ioPriority?: number;
 }
 
-interface FileExistsOptions extends FsOperationOptions {
-  queryInfoFlags?: Gio.FileQueryInfoFlags;
+interface FileExistsOptions
+  extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
   ioPriority?: number;
 }
 
-interface ReadFileOptions extends FsOperationOptions {}
+interface ReadFileOptions extends Mixin<[FsOperationOptions]> {}
 
-interface ReadTextFileOptions extends ReadFileOptions {
+interface ReadTextFileOptions extends Mixin<[ReadFileOptions]> {
   encoding?: Encoding;
 }
 
-interface WriteFileOptions extends FsOperationOptions {
+interface WriteFileOptions
+  extends Mixin<[FsOperationOptions, FileCreateFlagOptions]> {
+  ioPriority?: number;
   etag?: string;
   makeBackup?: boolean;
-  createFlags?: Gio.FileCreateFlags;
 }
 
-interface AppendFileOptions extends WriteFileOptions {
-  fileCreateFlags?: Gio.FileCreateFlags;
+interface AppendFileOptions
+  extends Mixin<[WriteFileOptions, FileCreateFlagOptions]> {
   ioPriority?: number;
 }
 
-interface AppendTextFileOptions extends AppendFileOptions {}
+interface AppendTextFileOptions extends Mixin<[AppendFileOptions]> {}
 
-interface WriteTextFileOptions extends WriteFileOptions {}
+interface WriteTextFileOptions extends Mixin<[WriteFileOptions]> {}
 
-interface MoveFileOptions extends FsOperationOptions {
-  fileCopyFlags?: Gio.FileCopyFlags;
+interface MoveFileOptions
+  extends Mixin<[FsOperationOptions, FileCopyFlagOptions]> {
   ioPriority?: number;
   onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
 }
 
-interface CopyFileOptions extends MoveFileOptions {
+interface CopyFileOptions
+  extends Mixin<[MoveFileOptions, FileCopyFlagOptions]> {
   ioPriority?: number;
-  fileCopyFlags?: Gio.FileCopyFlags;
   onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
 }
 
-interface DeleteFileOptions extends FsOperationOptions {
+interface DeleteFileOptions extends Mixin<[ListDirOptions]> {
   trash?: boolean;
   ioPriority?: number;
-  /** Not implemented yet. */
   recursive?: boolean;
-  queryInfoFlags?: Gio.FileQueryInfoFlags;
 }
 
-interface MakeDirOptions extends FsOperationOptions {
+interface MakeDirOptions extends Mixin<[FsOperationOptions]> {
   ioPriority?: number;
 }
 
-interface MakeLinkOptions extends FsOperationOptions {
+interface MakeLinkOptions extends Mixin<[FsOperationOptions]> {
   ioPriority?: number;
 }
 
-interface ChmodOptions extends FsOperationOptions {
-  queryInfoFlags?: Gio.FileQueryInfoFlags;
+interface ChmodOptions
+  extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
   ioPriority?: number;
 }
 
-interface ChownOptions extends FsOperationOptions {
-  queryInfoFlags?: Gio.FileQueryInfoFlags;
+interface ChownOptions
+  extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
   ioPriority?: number;
 }
 
@@ -287,7 +298,7 @@ class Fs {
     type: IOStreamType,
     options?: IOStreamOptions
   ) {
-    return Fs.globalInstance.openIOStream(path, type, options);
+    return Fs.globalInstance.openFileIOStream(path, type, options);
   }
 
   // #endregion
@@ -318,7 +329,7 @@ class Fs {
     this.appendFile = this.appendFile.bind(this);
     this.appendTextFile = this.appendTextFile.bind(this);
     this.fileExists = this.fileExists.bind(this);
-    this.openIOStream = this.openIOStream.bind(this);
+    this.openFileIOStream = this.openFileIOStream.bind(this);
   }
 
   private resolvePath(path: string, cwd?: string) {
@@ -337,12 +348,14 @@ class Fs {
   /** Checks if a file or directory exists. */
   public fileExists(path: string, options?: FileExistsOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise<boolean>("fileExists", opt.get("abortSignal"), (p) => {
+      const queryFlag = getQueryFileFlag(opt);
+
       file.query_info_async(
         "standard::name",
-        opt.get("queryInfoFlags", Gio.FileQueryInfoFlags.NONE),
+        queryFlag,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
         p.subCall((_, result: Gio.AsyncResult) => {
@@ -360,7 +373,7 @@ class Fs {
   /** Lists all the contents of a directory. */
   public listDir(path: string, options?: ListDirOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise<FileInfo[]>("", opt.get("abortSignal"), async (p) => {
       const ioPriority = opt.get("ioPriority", GLib.PRIORITY_DEFAULT);
@@ -370,9 +383,11 @@ class Fs {
         "listDir",
         opt.get("abortSignal"),
         (p2) => {
+          const queryFlag = getQueryFileFlag(opt);
+
           file.enumerate_children_async(
             opt.get("attributes", "*"),
-            opt.get("queryInfoFlags", Gio.FileQueryInfoFlags.NONE),
+            queryFlag,
             ioPriority,
             p2.cancellable,
             p2.subCall((_, result: Gio.AsyncResult) => {
@@ -432,7 +447,7 @@ class Fs {
   /** Gets information about a specific file or directory. */
   public fileInfo(path: string, options?: FileInfoOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise<FileInfo>("fileInfo", opt.get("abortSignal"), (p) => {
       const flag = opt.get("followSymlinks", false)
@@ -465,7 +480,7 @@ class Fs {
    */
   public readFile(path: string, options?: ReadFileOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise<Uint8Array>("readFile", opt.get("abortSignal"), (p) => {
       file.load_contents_async(
@@ -488,7 +503,7 @@ class Fs {
    * the given encoding.
    */
   public readTextFile(path: string, options?: ReadTextFileOptions) {
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return this.readFile(path, options).then((contents) => {
       const decoder = new TextDecoder(opt.get("encoding", "utf-8"));
@@ -503,9 +518,12 @@ class Fs {
     options?: WriteFileOptions
   ) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise("writeFile", opt.get("abortSignal"), async (p) => {
+      const createFlag = getCreateFileFlag(opt);
+      const ioPriority = opt.get("ioPriority", GLib.PRIORITY_DEFAULT);
+
       if (contents.byteLength === 0) {
         const stream = await promise<Gio.FileOutputStream>(
           "writeFile",
@@ -514,8 +532,8 @@ class Fs {
             file.replace_async(
               opt.get("etag", null),
               opt.get("makeBackup", false),
-              opt.get("createFlags", Gio.FileCreateFlags.NONE),
-              GLib.PRIORITY_DEFAULT,
+              createFlag,
+              ioPriority,
               p.cancellable,
               p.subCall((_, result: Gio.AsyncResult) => {
                 const stream = file.replace_finish(result);
@@ -536,7 +554,7 @@ class Fs {
         } finally {
           await promise("writeFile", null, (p3) => {
             stream.close_async(
-              GLib.PRIORITY_DEFAULT,
+              ioPriority,
               null,
               p3.subCall((_, result: Gio.AsyncResult) => {
                 const success = stream.close_finish(result);
@@ -550,13 +568,15 @@ class Fs {
           });
         }
 
-        p.resolve();
+        return p.resolve();
       } else {
-        file.replace_contents_async(
-          contents,
+        const bytes = GLib.Bytes.new(contents);
+
+        file.replace_contents_bytes_async(
+          bytes,
           opt.get("etag", null),
           opt.get("makeBackup", false),
-          opt.get("createFlags", Gio.FileCreateFlags.NONE),
+          createFlag,
           p.cancellable,
           p.subCall((_, result: Gio.AsyncResult) => {
             const [success] = file.replace_contents_finish(result);
@@ -595,7 +615,7 @@ class Fs {
     options?: AppendFileOptions
   ) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise("appendFile", opt.get("abortSignal"), async (p) => {
       if (contents.byteLength === 0) {
@@ -607,8 +627,10 @@ class Fs {
         "appendFile",
         opt.get("abortSignal"),
         (p2) => {
+          const createFlag = getCreateFileFlag(opt);
+
           file.append_to_async(
-            opt.get("fileCreateFlags", Gio.FileCreateFlags.NONE),
+            createFlag,
             opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
             p2.cancellable,
             p2.subCall((_, result: Gio.AsyncResult) => {
@@ -629,8 +651,9 @@ class Fs {
 
       try {
         await promise("appendFile", opt.get("abortSignal"), (p3) => {
+          const bytes = GLib.Bytes.new(contents);
           stream.write_bytes_async(
-            GLib.Bytes.new(contents),
+            bytes,
             opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
             p3.cancellable,
             p3.subCall((_, result: Gio.AsyncResult) => {
@@ -689,12 +712,14 @@ class Fs {
   ) {
     const oldFile = this.file(sourcePath);
     const newFile = this.file(destinationPath);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise("moveFile", opt.get("abortSignal"), (p) => {
+      const copyFlag = getCopyFileFlag(opt);
+
       oldFile.move_async(
         newFile,
-        opt.get("fileCopyFlags", Gio.FileCopyFlags.NONE),
+        copyFlag,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
         opt.get("onProgress", null),
@@ -731,12 +756,14 @@ class Fs {
   ) {
     const srcFile = this.file(sourcePath);
     const destFile = this.file(destinationPath);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise("copyFile", opt.get("abortSignal"), (p) => {
+      const copyFlag = getCopyFileFlag(opt);
+
       srcFile.copy_async(
         destFile,
-        opt.get("fileCopyFlags", Gio.FileCopyFlags.NONE),
+        copyFlag,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
         // @ts-expect-error
@@ -765,7 +792,7 @@ class Fs {
    */
   public deleteFile(path: string, options?: DeleteFileOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise("deleteFile", opt.get("abortSignal"), async (p) => {
       if (opt.get("trash", false)) {
@@ -818,7 +845,7 @@ class Fs {
   /** Creates a new directory under the given path. */
   public makeDir(path: string, options?: MakeDirOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise("makeDir", opt.get("abortSignal"), (p) => {
       file.make_directory_async(
@@ -854,7 +881,7 @@ class Fs {
   ) {
     const linkFile = this.file(linkPath);
     const dest = this.resolvePath(pointingTo);
-    const opt = OptionsResolver(option);
+    const opt = OptionsResolver(option, OptValidators);
 
     return promise("makeLink", opt.get("abortSignal"), (p) => {
       linkFile.make_symbolic_link_async(
@@ -889,16 +916,17 @@ class Fs {
    */
   public chmod(path: string, mode: FilePermission, options?: ChmodOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise("chmod", opt.get("abortSignal"), async (p) => {
-      const info = Gio.FileInfo.new();
+      const queryFlag = getQueryFileFlag(opt);
 
+      const info = Gio.FileInfo.new();
       info.set_attribute_uint32("unix::mode", parseFilePermission(mode));
 
       file.set_attributes_async(
         info,
-        opt.get("queryInfoFlags", Gio.FileQueryInfoFlags.NONE),
+        queryFlag,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
         p.subCall((_, result: Gio.AsyncResult) => {
@@ -920,9 +948,11 @@ class Fs {
   /** Changes the owner and group of a file or directory. */
   public chown(path: string, uid: number, gid: number, options?: ChownOptions) {
     const file = this.file(path);
-    const opt = OptionsResolver(options);
+    const opt = OptionsResolver(options, OptValidators);
 
     return promise("chown", opt.get("abortSignal"), async (p) => {
+      const queryFlag = getQueryFileFlag(opt);
+
       const { _gioInfo: info } = await this.fileInfo(path, options);
       p.breakpoint();
 
@@ -931,7 +961,7 @@ class Fs {
 
       file.set_attributes_async(
         info,
-        opt.get("queryInfoFlags", Gio.FileQueryInfoFlags.NONE),
+        queryFlag,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
         p.subCall((_, result: Gio.AsyncResult) => {
@@ -956,12 +986,12 @@ class Fs {
    * new file, open an existing one or overwrite an existing
    * one.
    */
-  public openIOStream(
+  public openFileIOStream(
     path: string,
     type: IOStreamType,
     options: IOStreamOptions = {}
   ) {
-    return IOStream.open(
+    return IOStream.openFile(
       path,
       type,
       this._cwd ? { cwd: this._cwd, ...options } : options

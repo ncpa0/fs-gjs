@@ -57,7 +57,9 @@ export default describe("Fs", () => {
     const files = await Fs.listDir(TMP_DIR_PATH);
 
     await Promise.all(
-      files.map((f) => fs.deleteFile(f.filepath, { recursive: true }))
+      files.map((f) =>
+        fs.deleteFile(f.filepath, { recursive: true, trash: true })
+      )
     );
   });
 
@@ -467,7 +469,7 @@ export default describe("Fs", () => {
 
     describe("openIOStream", () => {
       it("should create new instance of SyncIOStream (CREATE)", () => {
-        const stream = fs.openIOStream(testFile, "CREATE");
+        const stream = fs.openFileIOStream(testFile, "CREATE");
 
         try {
           expect(stream).toBeDefined();
@@ -482,7 +484,7 @@ export default describe("Fs", () => {
       it("should create new instance of SyncIOStream (OPEN)", () => {
         fs.writeTextFile(testFile, "");
 
-        const stream = fs.openIOStream(testFile, "OPEN");
+        const stream = fs.openFileIOStream(testFile, "OPEN");
 
         try {
           expect(stream).toBeDefined();
@@ -497,7 +499,7 @@ export default describe("Fs", () => {
       it("should create new instance of SyncIOStream (REPLACE)", () => {
         fs.writeTextFile(testFile, "");
 
-        const stream = fs.openIOStream(testFile, "REPLACE");
+        const stream = fs.openFileIOStream(testFile, "REPLACE");
 
         try {
           expect(stream).toBeDefined();
@@ -507,6 +509,121 @@ export default describe("Fs", () => {
         } finally {
           stream.close();
         }
+      });
+    });
+  });
+
+  describe("negative scenarios", () => {
+    describe("listDir", () => {
+      it("should fail when invalid option given: 'followSymlinks'", () => {
+        expect(() => fs.listDir(".", { followSymlinks: 1 as any })).toThrow();
+      });
+
+      it("should fail when invalid option given: 'attributes'", () => {
+        expect(() => fs.listDir(".", { attributes: 1 as any })).toThrow();
+      });
+
+      it("should fail when invalid option given: 'batchSize'", () => {
+        expect(() => fs.listDir(".", { batchSize: "12" as any })).toThrow();
+      });
+    });
+
+    describe("readTextFile", () => {
+      it("should fail when invalid option given: 'encoding'", () => {
+        expect(() => fs.readTextFile(".", { encoding: 1 as any })).toThrow();
+        expect(() =>
+          fs.readTextFile(".", { encoding: "lul" as any })
+        ).toThrow();
+      });
+    });
+
+    describe("writeTextFile", () => {
+      it("should fail when invalid option given: 'etag'", () => {
+        expect(() =>
+          fs.writeTextFile(testFile, loremIpsum, { etag: 3 as any })
+        ).toThrow();
+      });
+
+      it("should fail when invalid option given: 'makeBackup'", () => {
+        expect(() =>
+          fs.writeTextFile(testFile, loremIpsum, { makeBackup: "yes" as any })
+        ).toThrow();
+      });
+
+      it("should fail when invalid option given: 'private'", () => {
+        expect(() =>
+          fs.writeTextFile(testFile, loremIpsum, { private: 1 as any })
+        ).toThrow();
+      });
+
+      it("should fail when invalid option given: 'replace'", () => {
+        expect(() =>
+          fs.writeTextFile(testFile, loremIpsum, { replace: {} as any })
+        ).toThrow();
+      });
+    });
+
+    describe("moveFile", () => {
+      it("should fail when invalid option given: 'onProgress'", () => {
+        expect(() =>
+          fs.moveFile(testFile, testFile + "-ov", {
+            onProgress: {} as any,
+          })
+        ).toThrow();
+      });
+
+      it("should fail when invalid option given: 'allMetadata'", () => {
+        expect(() =>
+          fs.moveFile(testFile, testFile + "-ov", {
+            allMetadata: [] as any,
+          })
+        ).toThrow();
+      });
+
+      it("should fail when invalid option given: 'makeBackup'", () => {
+        expect(() =>
+          fs.moveFile(testFile, testFile + "-ov", {
+            makeBackup: 0 as any,
+          })
+        ).toThrow();
+      });
+
+      it("should fail when invalid option given: 'noFallbackForMove'", () => {
+        expect(() =>
+          fs.moveFile(testFile, testFile + "-ov", {
+            noFallbackForMove: (() => {}) as any,
+          })
+        ).toThrow();
+      });
+
+      it("should fail when invalid option given: 'overwrite'", () => {
+        expect(() =>
+          fs.moveFile(testFile, testFile + "-ov", {
+            overwrite: "123" as any,
+          })
+        ).toThrow();
+      });
+
+      it("should fail when invalid option given: 'targetDefaultPermissions'", () => {
+        expect(() =>
+          fs.moveFile(testFile, testFile + "-ov", {
+            targetDefaultPermissions: 1 as any,
+          })
+        ).toThrow();
+      });
+    });
+
+    describe("deleteFile", () => {
+      it("should fail when invalid option given: 'recursive'", () => {
+        expect(() =>
+          fs.deleteFile(testFile, { recursive: "yes" as any })
+        ).toThrow();
+      });
+
+      it("should fail when invalid option given: 'trash'", () => {
+        expect(() =>
+          fs.deleteFile(testFile, { trash: "~/trashbin" as any })
+        ).toThrow();
       });
     });
   });

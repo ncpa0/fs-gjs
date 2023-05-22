@@ -33,6 +33,20 @@ dignissim augue, a sagittis erat arcu et metus. Lorem ipsum dolor sit
 amet, consectetur adipiscing elit. Donec at commodo purus.
 `;
 
+const compareBytes = (a: Uint8Array, b: Uint8Array) => {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  for (let i = 0; i < a.length; ++i) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 let _i = 1;
 const getNextTestFile = () => `test${_i++}`;
 
@@ -57,7 +71,9 @@ export default describe("Fs", () => {
     const files = await fs.listDir(".");
 
     await Promise.all(
-      files.map((f) => fs.deleteFile(f.filepath, { recursive: true }))
+      files.map((f) =>
+        fs.deleteFile(f.filepath, { recursive: true, trash: true })
+      )
     );
   });
 
@@ -86,6 +102,77 @@ export default describe("Fs", () => {
 
         // test
         const files = await fs.listDir(testFile);
+
+        expect(files.length).toBe(4);
+        expect(files).toContainMatch(
+          {
+            filename: "txtfile",
+            filepath: match.stringContaining(testFile + "/txtfile"),
+            isDirectory: false,
+            isFile: true,
+            isSymlink: false,
+            canDelete: true,
+            canExecute: false,
+            canRead: true,
+            canWrite: true,
+            canTrash: true,
+          },
+          {
+            filename: "executable",
+            filepath: match.stringContaining(testFile + "/executable"),
+            isDirectory: false,
+            isFile: true,
+            isSymlink: false,
+            canDelete: true,
+            canExecute: true,
+            canRead: true,
+            canWrite: true,
+            canTrash: true,
+          },
+          {
+            filename: "childDir",
+            filepath: match.stringContaining(testFile + "/childDir"),
+            isDirectory: true,
+            isFile: false,
+            isSymlink: false,
+            canDelete: true,
+            canExecute: true,
+            canRead: true,
+            canWrite: true,
+            canTrash: true,
+          },
+          {
+            filename: "link",
+            filepath: match.stringContaining(testFile + "/link"),
+            symlinkTarget: match.stringContaining(testFile + "/txtfile"),
+            isDirectory: false,
+            isFile: false,
+            isSymlink: true,
+            canDelete: true,
+            canExecute: false,
+            canRead: true,
+            canWrite: true,
+            canTrash: true,
+          }
+        );
+      });
+
+      it("should work with flag options", async () => {
+        // setup
+        await fs.makeDir(testFile);
+
+        await fs.writeTextFile(testFile + "/txtfile", "123");
+        await fs.writeTextFile(testFile + "/executable", "#!/bin/bash");
+        await fs.chmod(testFile + "/executable", "rwxr-xr-x");
+        await fs.makeDir(testFile + "/childDir");
+        await fs.makeLink(testFile + "/link", testFile + "/txtfile");
+
+        // test
+        const files = await fs.listDir(testFile, {
+          attributes: "*",
+          batchSize: 2,
+          followSymlinks: true,
+        });
 
         expect(files.length).toBe(4);
         expect(files).toContainMatch(
@@ -254,6 +341,27 @@ export default describe("Fs", () => {
         const readNewData = await fs.readFile(testFile);
         expect(readNewData).toEqual(newData);
       });
+
+      it("should work with flag options", async () => {
+        const data = new Uint8Array([2, 1, 4, 3, 6, 5, 8, 7]);
+        await fs.writeFile(testFile, data);
+
+        const readData = await fs.readFile(testFile);
+        expect(readData).toEqual(data);
+
+        const newData = new Uint8Array([100, 1000, 10000]);
+        await fs.writeFile(testFile, newData, {
+          makeBackup: true,
+          private: true,
+          replace: true,
+        });
+
+        const readNewData = await fs.readFile(testFile);
+        expect(readNewData).toEqual(newData);
+
+        const backupData = await fs.readFile(testFile + "~");
+        expect(compareBytes(backupData, data)).toBe(true);
+      });
     });
 
     describe("writeTextFile", () => {
@@ -318,6 +426,39 @@ export default describe("Fs", () => {
         const text = await fs.readTextFile(testFile + "-renamed");
 
         expect(text).toEqual(loremIpsum);
+      });
+
+      it("should work with flag options", async () => {
+        await fs.writeTextFile(testFile, loremIpsum);
+
+        await fs.writeFile(testFile + "-ov", new Uint8Array([1, 2, 3, 4]));
+
+        await fs.moveFile(testFile, testFile + "-ov", {
+          allMetadata: true,
+          makeBackup: true,
+          noFallbackForMove: true,
+          overwrite: true,
+          targetDefaultPermissions: true,
+        });
+
+        const files = await fs.listDir(".");
+
+        expect(files).toContainMatch({
+          filename: testFile + "-ov",
+        });
+        expect(files).toContainMatch({
+          filename: testFile + "-ov~",
+        });
+        expect(files).not.toContainMatch({
+          filename: testFile,
+        });
+
+        const text = await fs.readTextFile(testFile + "-ov");
+
+        expect(text).toEqual(loremIpsum);
+
+        const backup = await fs.readFile(testFile + "-ov~");
+        expect(compareBytes(backup, new Uint8Array([1, 2, 3, 4]))).toBe(true);
       });
     });
 
@@ -467,7 +608,7 @@ export default describe("Fs", () => {
 
     describe("openIOStream", () => {
       it("should create new instance of IOStream (CREATE)", async () => {
-        const stream = await fs.openIOStream(testFile, "CREATE");
+        const stream = await fs.openFileIOStream(testFile, "CREATE");
 
         expect(stream).toBeDefined();
         expect(stream instanceof IOStream).toBe(true);
@@ -480,7 +621,7 @@ export default describe("Fs", () => {
       it("should create new instance of IOStream (OPEN)", async () => {
         await fs.writeTextFile(testFile, "");
 
-        const stream = await fs.openIOStream(testFile, "OPEN");
+        const stream = await fs.openFileIOStream(testFile, "OPEN");
 
         expect(stream).toBeDefined();
         expect(stream instanceof IOStream).toBe(true);
@@ -493,7 +634,7 @@ export default describe("Fs", () => {
       it("should create new instance of IOStream (REPLACE)", async () => {
         await fs.writeTextFile(testFile, "");
 
-        const stream = await fs.openIOStream(testFile, "REPLACE");
+        const stream = await fs.openFileIOStream(testFile, "REPLACE");
 
         expect(stream).toBeDefined();
         expect(stream instanceof IOStream).toBe(true);
@@ -501,6 +642,125 @@ export default describe("Fs", () => {
         expect(stream.type).toBe("REPLACE");
 
         await stream.close();
+      });
+    });
+  });
+
+  describe("negative scenarios", () => {
+    describe("listDir", () => {
+      it("should fail when invalid option given: 'followSymlinks'", async () => {
+        await expect(fs.listDir(".", { followSymlinks: 1 as any })).toReject();
+      });
+
+      it("should fail when invalid option given: 'attributes'", async () => {
+        await expect(fs.listDir(".", { attributes: 1 as any })).toReject();
+      });
+
+      it("should fail when invalid option given: 'batchSize'", async () => {
+        await expect(fs.listDir(".", { batchSize: "12" as any })).toReject();
+      });
+
+      it("should fail when invalid option given: 'ioPriority'", async () => {
+        await expect(fs.listDir(".", { ioPriority: "" as any })).toReject();
+      });
+    });
+
+    describe("readTextFile", async () => {
+      it("should fail when invalid option given: 'encoding'", async () => {
+        await expect(fs.readTextFile(".", { encoding: 1 as any })).toReject();
+        await expect(
+          fs.readTextFile(".", { encoding: "lul" as any })
+        ).toReject();
+      });
+    });
+
+    describe("writeTextFile", async () => {
+      it("should fail when invalid option given: 'etag'", async () => {
+        await expect(
+          fs.writeTextFile(testFile, loremIpsum, { etag: 3 as any })
+        ).toReject();
+      });
+
+      it("should fail when invalid option given: 'makeBackup'", async () => {
+        await expect(
+          fs.writeTextFile(testFile, loremIpsum, { makeBackup: "yes" as any })
+        ).toReject();
+      });
+
+      it("should fail when invalid option given: 'private'", async () => {
+        await expect(
+          fs.writeTextFile(testFile, loremIpsum, { private: 1 as any })
+        ).toReject();
+      });
+
+      it("should fail when invalid option given: 'replace'", async () => {
+        await expect(
+          fs.writeTextFile(testFile, loremIpsum, { replace: {} as any })
+        ).toReject();
+      });
+    });
+
+    describe("moveFile", async () => {
+      it("should fail when invalid option given: 'onProgress'", async () => {
+        await expect(
+          fs.moveFile(testFile, testFile + "-ov", {
+            onProgress: {} as any,
+          })
+        ).toReject();
+      });
+
+      it("should fail when invalid option given: 'allMetadata'", async () => {
+        await expect(
+          fs.moveFile(testFile, testFile + "-ov", {
+            allMetadata: [] as any,
+          })
+        ).toReject();
+      });
+
+      it("should fail when invalid option given: 'makeBackup'", async () => {
+        await expect(
+          fs.moveFile(testFile, testFile + "-ov", {
+            makeBackup: 0 as any,
+          })
+        ).toReject();
+      });
+
+      it("should fail when invalid option given: 'noFallbackForMove'", async () => {
+        await expect(
+          fs.moveFile(testFile, testFile + "-ov", {
+            noFallbackForMove: (() => {}) as any,
+          })
+        ).toReject();
+      });
+
+      it("should fail when invalid option given: 'overwrite'", async () => {
+        await expect(
+          fs.moveFile(testFile, testFile + "-ov", {
+            overwrite: "123" as any,
+          })
+        ).toReject();
+      });
+
+      it("should fail when invalid option given: 'targetDefaultPermissions'", async () => {
+        await expect(
+          fs.moveFile(testFile, testFile + "-ov", {
+            targetDefaultPermissions: 1 as any,
+          })
+        ).toReject();
+      });
+    });
+
+    describe("deleteFile", async () => {
+      it("should fail when invalid option given: 'recursive'", async () => {
+        await expect(
+          fs.deleteFile(testFile, { recursive: "yes" as any })
+        ).toReject();
+      });
+
+      it("should fail when invalid option given: 'trash'", async () => {
+        await expect(
+          fs.deleteFile(testFile, { trash: "~/trashbin" as any })
+        ).toReject();
       });
     });
   });
