@@ -112,6 +112,7 @@ export const OptValidators = new Map([
   ["etag", validateEtag],
   ["onProgress", validateOnProgress],
   ["trash", validateTrash],
+  ["batchSize", validateBatchSize],
   ["overwrite", validateOverwrite],
   ["allMetadata", validateAllMetadata],
   ["noFallbackForMove", validateNoFallbackForMove],
