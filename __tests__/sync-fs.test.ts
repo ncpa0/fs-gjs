@@ -144,6 +144,31 @@ export default describe("Fs", () => {
       });
     });
 
+    describe("listFilenames", () => {
+      it("should return a list of FileInfo objects for each file and dir", () => {
+        // setup
+        fs.makeDir(testFile);
+
+        fs.writeTextFile(testFile + "/file.txt", "123");
+        fs.writeFile(testFile + "/binary", new Uint8Array([1, 2, 3, 4]));
+        fs.writeTextFile(testFile + "/executable.sh", "#!/bin/bash");
+        fs.makeDir(testFile + "/childDir");
+        fs.makeLink(testFile + "/link", testFile + "/file.txt");
+
+        // test
+        const files = fs.listFilenames(testFile);
+
+        expect(files.length).toBe(5);
+        expect(files).toContainOnly(
+          "file.txt",
+          "binary",
+          "executable.sh",
+          "childDir",
+          "link"
+        );
+      });
+    });
+
     describe("fileInfo", () => {
       it("should return a FileInfo object for the given file", () => {
         // setup
@@ -522,9 +547,16 @@ export default describe("Fs", () => {
       it("should fail when invalid option given: 'attributes'", () => {
         expect(() => fs.listDir(".", { attributes: 1 as any })).toThrow();
       });
+    });
 
-      it("should fail when invalid option given: 'batchSize'", () => {
-        expect(() => fs.listDir(".", { batchSize: "12" as any })).toThrow();
+    describe("fileInfo", () => {
+      it("should fail when invalid option given: 'followSymlinks'", () => {
+        expect(() => fs.fileInfo(".", { followSymlinks: 1 as any })).toThrow();
+      });
+
+      it("should fail when invalid option given: 'attributes'", () => {
+        expect(() => fs.fileInfo(".", { attributes: 1 as any })).toThrow();
+        expect(() => fs.fileInfo(".", { attributes: "*" as any })).toThrow();
       });
     });
 

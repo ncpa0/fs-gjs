@@ -229,6 +229,31 @@ export default describe("Fs", () => {
       });
     });
 
+    describe("listFilenames", () => {
+      it("should return a list of FileInfo objects for each file and dir", async () => {
+        // setup
+        await fs.makeDir(testFile);
+
+        await fs.writeTextFile(testFile + "/file.txt", "123");
+        await fs.writeFile(testFile + "/binary", new Uint8Array([1, 2, 3, 4]));
+        await fs.writeTextFile(testFile + "/executable.sh", "#!/bin/bash");
+        await fs.makeDir(testFile + "/childDir");
+        await fs.makeLink(testFile + "/link", testFile + "/file.txt");
+
+        // test
+        const files = await fs.listFilenames(testFile, { batchSize: 2 });
+
+        expect(files.length).toBe(5);
+        expect(files).toContainOnly(
+          "file.txt",
+          "binary",
+          "executable.sh",
+          "childDir",
+          "link"
+        );
+      });
+    });
+
     describe("fileInfo", () => {
       it("should return a FileInfo object for the given file", async () => {
         // setup
@@ -665,7 +690,18 @@ export default describe("Fs", () => {
       });
     });
 
-    describe("readTextFile", async () => {
+    describe("fileInfo", () => {
+      it("should fail when invalid option given: 'followSymlinks'", async () => {
+        await expect(fs.fileInfo(".", { followSymlinks: 1 as any })).toReject();
+      });
+
+      it("should fail when invalid option given: 'attributes'", async () => {
+        await expect(fs.fileInfo(".", { attributes: 1 as any })).toReject();
+        await expect(fs.fileInfo(".", { attributes: "*" as any })).toReject();
+      });
+    });
+
+    describe("readTextFile", () => {
       it("should fail when invalid option given: 'encoding'", async () => {
         await expect(fs.readTextFile(".", { encoding: 1 as any })).toReject();
         await expect(
@@ -674,7 +710,7 @@ export default describe("Fs", () => {
       });
     });
 
-    describe("writeTextFile", async () => {
+    describe("writeTextFile", () => {
       it("should fail when invalid option given: 'etag'", async () => {
         await expect(
           fs.writeTextFile(testFile, loremIpsum, { etag: 3 as any })
@@ -700,7 +736,7 @@ export default describe("Fs", () => {
       });
     });
 
-    describe("moveFile", async () => {
+    describe("moveFile", () => {
       it("should fail when invalid option given: 'onProgress'", async () => {
         await expect(
           fs.moveFile(testFile, testFile + "-ov", {
@@ -750,7 +786,7 @@ export default describe("Fs", () => {
       });
     });
 
-    describe("deleteFile", async () => {
+    describe("deleteFile", () => {
       it("should fail when invalid option given: 'recursive'", async () => {
         await expect(
           fs.deleteFile(testFile, { recursive: "yes" as any })

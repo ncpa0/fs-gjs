@@ -27,10 +27,11 @@ type Mixin<T extends any[]> = T["length"] extends 0
 
 interface SyncFsOperationOptions {}
 
-interface SyncListDirOptions
-  extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {
+interface SyncListFilenamesOptions
+  extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {}
+
+interface SyncListDirOptions extends Mixin<[SyncListFilenamesOptions]> {
   attributes?: string[];
-  batchSize?: number;
 }
 
 interface SyncFileInfoOptions
@@ -114,6 +115,14 @@ class SyncFs {
   /** Lists all the contents of a directory. */
   public static listDir(path: string, options?: SyncListDirOptions) {
     return SyncFs.globalInstance.listDir(path, options);
+  }
+
+  /** Lists the names of all files inside of a directory. */
+  public static listFilenames(
+    path: string,
+    options?: SyncListFilenamesOptions
+  ) {
+    return SyncFs.globalInstance.listFilenames(path, options);
   }
 
   /** Gets information about a specific file or directory. */
@@ -348,6 +357,10 @@ class SyncFs {
       null
     );
 
+    if (!enumerator) {
+      throw new FsError("Failed to enumerate directory.");
+    }
+
     const allFiles: FileInfo[] = [];
 
     while (true) {
@@ -361,6 +374,39 @@ class SyncFs {
         new FileInfo(join(dirFile.get_path()!, nextFile.get_name()), nextFile)
       );
     }
+
+    return allFiles;
+  }
+
+  /** Lists all the contents of a directory as file names. */
+  public listFilenames(path: string, options?: SyncListFilenamesOptions) {
+    const dirFile = this.file(path);
+    const opt = OptionsResolver(options, OptValidators);
+    const queryFlag = getQueryFileFlag(opt);
+
+    const enumerator = dirFile.enumerate_children(
+      "standard::name",
+      queryFlag,
+      null
+    );
+
+    if (!enumerator) {
+      throw new FsError("Failed to enumerate directory.");
+    }
+
+    const allFiles: string[] = [];
+
+    while (true) {
+      const nextFile = enumerator.next_file(null);
+
+      if (!nextFile) {
+        break;
+      }
+
+      allFiles.push(nextFile.get_name());
+    }
+
+    enumerator.close(null);
 
     return allFiles;
   }

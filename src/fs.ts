@@ -29,11 +29,14 @@ interface FsOperationOptions {
   abortSignal?: AbortSignal;
 }
 
-interface ListDirOptions
+interface ListFilenamesOptions
   extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
-  attributes?: string[];
   ioPriority?: number;
   batchSize?: number;
+}
+
+interface ListDirOptions extends Mixin<[ListFilenamesOptions]> {
+  attributes?: string[];
 }
 
 interface FileInfoOptions
@@ -131,6 +134,11 @@ class Fs {
   /** Lists all the contents of a directory. */
   public static listDir(path: string, options?: ListDirOptions) {
     return Fs.globalInstance.listDir(path, options);
+  }
+
+  /** Lists all the contents of a directory as file names. */
+  public static listFilenames(path: string, options?: ListFilenamesOptions) {
+    return Fs.globalInstance.listFilenames(path, options);
   }
 
   /** Gets information about a specific file or directory. */
@@ -373,10 +381,10 @@ class Fs {
 
   /** Lists all the contents of a directory. */
   public listDir(path: string, options?: ListDirOptions) {
-    const file = this.file(path);
+    const dir = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
 
-    return promise<FileInfo[]>("", opt.get("abortSignal"), async (p) => {
+    return promise<FileInfo[]>("listDir", opt.get("abortSignal"), async (p) => {
       const ioPriority = opt.get("ioPriority", GLib.PRIORITY_DEFAULT);
       const batchSize = opt.get("batchSize", 50);
 
@@ -386,26 +394,24 @@ class Fs {
         (p2) => {
           const queryFlag = getQueryFileFlag(opt);
 
-          file.enumerate_children_async(
+          dir.enumerate_children_async(
             getAttributes(opt.get("attributes", [])),
             queryFlag,
             ioPriority,
             p2.cancellable,
             p2.subCall((_, result: Gio.AsyncResult) => {
-              const enumerator = file.enumerate_children_finish(result);
+              const enumerator = dir.enumerate_children_finish(result);
               if (enumerator) {
                 p2.resolve(enumerator);
               } else {
                 p2.reject(
-                  new FsError(`Failed to list directory: ${file.get_path()}`)
+                  new FsError(`Failed to list directory: ${dir.get_path()}`)
                 );
               }
             })
           );
         }
       );
-
-      p.breakpoint();
 
       const getNextBatch = () =>
         promise<Gio.FileInfo[]>("listDir", opt.get("abortSignal"), (p3) => {
@@ -423,12 +429,10 @@ class Fs {
 
       const allFiles: FileInfo[] = [];
 
-      let nextBatch: Gio.FileInfo[] = [];
-
       while (true) {
         p.breakpoint();
 
-        nextBatch = await getNextBatch();
+        const nextBatch = await getNextBatch();
 
         if (nextBatch.length === 0) {
           break;
@@ -436,13 +440,91 @@ class Fs {
 
         allFiles.push(
           ...nextBatch.map(
-            (f) => new FileInfo(join(file.get_path()!, f.get_name()), f)
+            (f) => new FileInfo(join(dir.get_path()!, f.get_name()), f)
           )
         );
       }
 
+      enumerator.close_async(ioPriority, null, (_, result) => {
+        enumerator.close_finish(result);
+      });
+
       return p.resolve(allFiles);
     });
+  }
+
+  /** Lists the names of all files inside of a directory. */
+  public listFilenames(path: string, options?: ListFilenamesOptions) {
+    const dir = this.file(path);
+    const opt = OptionsResolver(options, OptValidators);
+
+    return promise<string[]>(
+      "listFilenames",
+      opt.get("abortSignal"),
+      async (p) => {
+        const ioPriority = opt.get("ioPriority", GLib.PRIORITY_DEFAULT);
+        const batchSize = opt.get("batchSize", 50);
+
+        const enumerator = await promise<Gio.FileEnumerator>(
+          "listDir",
+          opt.get("abortSignal"),
+          (p2) => {
+            const queryFlag = getQueryFileFlag(opt);
+
+            dir.enumerate_children_async(
+              "standard::name",
+              queryFlag,
+              ioPriority,
+              p2.cancellable,
+              p2.subCall((_, result: Gio.AsyncResult) => {
+                const enumerator = dir.enumerate_children_finish(result);
+                if (enumerator) {
+                  p2.resolve(enumerator);
+                } else {
+                  p2.reject(
+                    new FsError(`Failed to list filenames: ${dir.get_path()}`)
+                  );
+                }
+              })
+            );
+          }
+        );
+
+        const getNextBatch = () =>
+          promise<Gio.FileInfo[]>("listDir", opt.get("abortSignal"), (p3) => {
+            enumerator.next_files_async(
+              batchSize,
+              ioPriority,
+              p3.cancellable,
+              p3.subCall((_, result: Gio.AsyncResult) => {
+                p3.resolve(enumerator.next_files_finish(result) ?? []);
+              })
+            );
+          });
+
+        p.breakpoint();
+
+        const allFiles: string[] = [];
+
+        while (true) {
+          p.breakpoint();
+
+          const nextBatch = await getNextBatch();
+
+          if (nextBatch.length === 0) {
+            break;
+          }
+
+          allFiles.push(...nextBatch.map((f) => f.get_name()));
+        }
+
+        enumerator.close_async(ioPriority, null, (_, result) => {
+          enumerator.close_finish(result);
+        });
+
+        return p.resolve(allFiles);
+      }
+    );
   }
 
   /** Gets information about a specific file or directory. */
