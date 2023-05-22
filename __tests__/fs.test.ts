@@ -169,7 +169,7 @@ export default describe("Fs", () => {
 
         // test
         const files = await fs.listDir(testFile, {
-          attributes: "*",
+          attributes: ["*"],
           batchSize: 2,
           followSymlinks: true,
         });

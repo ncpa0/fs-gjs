@@ -59,7 +59,7 @@ export class FileInfo {
   /**
    * The path to the thumbnail of the file. If it has one. If the
    * thumbnailing has recently failed or the current thumbnail is
-   * outdated, this value will be `null`.
+   * outdated", " this value will be `null`.
    */
   get thumbnailPath(): string | null {
     const failed = this._gioInfo.get_attribute_boolean("thumbnail::failed");
@@ -177,3 +177,53 @@ export class FileInfo {
     return this._gioInfo.get_attribute_boolean("access::can-trash");
   }
 }
+
+/**
+ * A list of attributes used in every File operation within
+ * fs-gjs.
+ */
+export const BASE_ATTRIBUTES = new Set([
+  "standard::*",
+  "etag::value",
+  "unix::is-mountpoint",
+  "unix::uid",
+  "unix::gid",
+  "unix::block-size",
+  "unix::blocks",
+  "unix::mode",
+  "owner::user",
+  "access::can-read",
+  "access::can-write",
+  "access::can-execute",
+  "access::can-delete",
+  "access::can-trash",
+  "owner::group",
+  "filesystem::size",
+  "filesystem::use-preview",
+  "time::access",
+  "time::access-usec",
+  "time::modified",
+  "time::modified-usec",
+  "time::changed",
+  "time::changed-usec",
+  "time::created",
+  "time::created-usec",
+  "thumbnail::failed",
+  "thumbnail::valid",
+  "thumbnail::path",
+]);
+
+export const getAttributes = (attributes: string[]) => {
+  const final = new Set(BASE_ATTRIBUTES);
+
+  for (let i = 0; i < attributes.length; ++i) {
+    final.add(attributes[i]!);
+  }
+
+  let result = "";
+  final.forEach((attr) => {
+    result += attr + ",";
+  });
+
+  return result;
+};

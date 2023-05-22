@@ -2,7 +2,7 @@ import GLib from "gi://GLib?version=2.0";
 import Gio from "gi://Gio?version=2.0";
 import type { Encoding } from "./encoding";
 import { FsError } from "./errors";
-import { FileInfo } from "./file-info";
+import { FileInfo, getAttributes } from "./file-info";
 import type {
   FileCopyFlagOptions,
   FileCreateFlagOptions,
@@ -31,13 +31,14 @@ interface FsOperationOptions {
 
 interface ListDirOptions
   extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
-  attributes?: string;
+  attributes?: string[];
   ioPriority?: number;
   batchSize?: number;
 }
 
 interface FileInfoOptions
   extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
+  attributes?: string[];
   ioPriority?: number;
 }
 
@@ -386,7 +387,7 @@ class Fs {
           const queryFlag = getQueryFileFlag(opt);
 
           file.enumerate_children_async(
-            opt.get("attributes", "*"),
+            getAttributes(opt.get("attributes", [])),
             queryFlag,
             ioPriority,
             p2.cancellable,
@@ -455,7 +456,7 @@ class Fs {
         : Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS;
 
       file.query_info_async(
-        "*",
+        getAttributes(opt.get("attributes", [])),
         flag,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,

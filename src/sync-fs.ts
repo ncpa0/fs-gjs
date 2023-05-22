@@ -2,7 +2,7 @@ import GLib from "gi://GLib?version=2.0";
 import Gio from "gi://Gio?version=2.0";
 import type { Encoding } from "./encoding";
 import { FsError } from "./errors";
-import { FileInfo } from "./file-info";
+import { FileInfo, getAttributes } from "./file-info";
 import type {
   FileCopyFlagOptions,
   FileCreateFlagOptions,
@@ -29,12 +29,14 @@ interface SyncFsOperationOptions {}
 
 interface SyncListDirOptions
   extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {
-  attributes?: string;
+  attributes?: string[];
   batchSize?: number;
 }
 
 interface SyncFileInfoOptions
-  extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {}
+  extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {
+  attributes?: string[];
+}
 
 interface SyncReadFileOptions extends Mixin<[SyncFsOperationOptions]> {}
 
@@ -341,7 +343,7 @@ class SyncFs {
     const queryFlag = getQueryFileFlag(opt);
 
     const enumerator = dirFile.enumerate_children(
-      opt.get("attributes", "*"),
+      getAttributes(opt.get("attributes", [])),
       queryFlag,
       null
     );
@@ -368,11 +370,13 @@ class SyncFs {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
 
-    const flag = opt.get("followSymlinks", false)
-      ? Gio.FileQueryInfoFlags.NONE
-      : Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS;
+    const flag = getQueryFileFlag(opt);
 
-    const info = file.query_info("*", flag, null);
+    const info = file.query_info(
+      getAttributes(opt.get("attributes", [])),
+      flag,
+      null
+    );
 
     return new FileInfo(file.get_path()!, info);
   }

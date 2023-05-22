@@ -19,7 +19,13 @@ function validateType<T extends "number" | "string" | "boolean" | "function">(
 }
 
 const validateAttributes = (v: any) => {
-  validateType(v, "attributes", "string");
+  if (!Array.isArray(v)) {
+    throw new InvalidOptionError("attributes", "array");
+  }
+
+  for (let i = 0; i < v.length; i++) {
+    validateType(v[i], `attributes[${i}]`, "string");
+  }
 };
 
 const validateFollowSymlinks = (v: any) => {
