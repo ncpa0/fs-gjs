@@ -8,7 +8,8 @@ import {
   match,
 } from "@reactgjs/gest";
 import GLib from "gi://GLib?version=2.0";
-import { Fs, FsError, IOStream } from "../src/index";
+import { Fs, IOStream } from "../src/index";
+import { compareBytes, matchFsError, matchMessageContaining } from "./shared";
 
 const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
 Praesent quis turpis pharetra, lobortis felis vitae, lacinia magna.
@@ -33,38 +34,10 @@ dignissim augue, a sagittis erat arcu et metus. Lorem ipsum dolor sit
 amet, consectetur adipiscing elit. Donec at commodo purus.
 `;
 
-const compareBytes = (a: Uint8Array, b: Uint8Array) => {
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  for (let i = 0; i < a.length; ++i) {
-    if (a[i] !== b[i]) {
-      return false;
-    }
-  }
-
-  return true;
-};
-
 let _i = 1;
 const getNextTestFile = () => `test${_i++}`;
 
 const TMP_DIR_PATH = GLib.get_current_dir() + "/__tests__/fs-test-tmp";
-
-const matchFsError = (message: any) => {
-  return match.allOf(
-    {
-      message,
-      stack: match.type("string"),
-    },
-    match.instanceOf(FsError)
-  );
-};
-
-const matchMessageContaining = (...str: string[]) => {
-  return match.allOf(...str.map((r) => match.stringContaining(r)));
-};
 
 export default describe("Fs", () => {
   let testFile = "";
@@ -712,6 +685,23 @@ export default describe("Fs", () => {
           ).toRejectMatch(
             matchFsError(
               "'listDir' failed with error: Invalid option 'batchSize' - Expected a [number]."
+            )
+          );
+          await expect(fs.listDir(".", { batchSize: NaN })).toRejectMatch(
+            matchFsError(
+              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [number]."
+            )
+          );
+          await expect(fs.listDir(".", { batchSize: -1 })).toRejectMatch(
+            matchFsError(
+              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [positive integer]."
+            )
+          );
+          await expect(
+            fs.listDir(".", { batchSize: 1.000000000001 })
+          ).toRejectMatch(
+            matchFsError(
+              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [positive integer]."
             )
           );
         });

@@ -7,7 +7,12 @@ import { getCreateFileFlag } from "./flags";
 import { Fs } from "./fs";
 import { OptionsResolver } from "./option-resolver";
 import { promise } from "./promise";
-import { OptValidators, validateBytes, validateNumber } from "./validators";
+import {
+  OptValidators,
+  validateBytes,
+  validateInteger,
+  validatePositiveInteger,
+} from "./validators";
 
 interface IOStreamOptions extends FileCreateFlagOptions {
   cwd?: string;
@@ -42,6 +47,14 @@ class IOStream {
 
   private constructor(private gioFile: Gio.File, options?: IOStreamOptions) {
     this._options = OptionsResolver(options, OptValidators);
+
+    /** Options are validated on access */
+    this._options.get("cwd");
+    this._options.get("etag");
+    this._options.get("ioPriority");
+    this._options.get("makeBackup");
+    this._options.get("private");
+    this._options.get("replace");
   }
 
   public get _gioStream() {
@@ -179,7 +192,7 @@ class IOStream {
 
   public async seek(offset: number) {
     return await promise("IOStream.seek", null, async (p) => {
-      validateNumber(offset);
+      validateInteger(offset);
 
       await this._mutex.acquire();
       this._ensureCanSeek();
@@ -199,8 +212,8 @@ class IOStream {
   }
 
   public async seekFromEnd(offset: number) {
-    return await promise("IOStream.seek", null, async (p) => {
-      validateNumber(offset);
+    return await promise("IOStream.seekFromEnd", null, async (p) => {
+      validateInteger(offset);
 
       await this._mutex.acquire();
       this._ensureCanSeek();
@@ -220,8 +233,8 @@ class IOStream {
   }
 
   public async seekFromStart(offset: number) {
-    return await promise("IOStream.seek", null, async (p) => {
-      validateNumber(offset);
+    return await promise("IOStream.seekFromStart", null, async (p) => {
+      validateInteger(offset);
 
       await this._mutex.acquire();
       this._ensureCanSeek();
@@ -242,7 +255,7 @@ class IOStream {
 
   public async skip(offset: number) {
     return await promise<number>("IOStream.skip", null, async (p) => {
-      validateNumber(offset);
+      validatePositiveInteger(offset);
 
       await this._mutex.acquire();
 
@@ -317,7 +330,7 @@ class IOStream {
 
   public async read(byteCount: number) {
     return await promise<Uint8Array>("IOStream.read", null, async (p) => {
-      validateNumber(byteCount);
+      validatePositiveInteger(byteCount);
 
       await this._mutex.acquire();
 
@@ -352,9 +365,9 @@ class IOStream {
   }
 
   public async readAll(options?: { chunkSize?: number }) {
-    return await promise<Uint8Array>("IOStream.read", null, async (p) => {
+    return await promise<Uint8Array>("IOStream.readAll", null, async (p) => {
       const { chunkSize = 500000 } = options ?? {};
-      validateNumber(chunkSize);
+      validatePositiveInteger(chunkSize);
 
       await this._mutex.acquire();
 
@@ -363,46 +376,50 @@ class IOStream {
       try {
         const opt = this._options;
 
-        bytes = await promise<Uint8Array>("IOStream.read", null, async (p2) => {
-          let result = new Uint8Array([]);
+        bytes = await promise<Uint8Array>(
+          "IOStream.readAll",
+          null,
+          async (p2) => {
+            let result = new Uint8Array([]);
 
-          while (true) {
-            const nextBytes = await promise<Uint8Array>(
-              "IOStream.read",
-              null,
-              (p3) => {
-                this._stream!.input_stream.read_bytes_async(
-                  chunkSize,
-                  opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-                  null,
-                  p3.asyncCallback((_, result: Gio.AsyncResult) => {
-                    const bytes =
-                      this._stream!.input_stream.read_bytes_finish(result);
+            while (true) {
+              const nextBytes = await promise<Uint8Array>(
+                "IOStream.readAll",
+                null,
+                (p3) => {
+                  this._stream!.input_stream.read_bytes_async(
+                    chunkSize,
+                    opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+                    null,
+                    p3.asyncCallback((_, result: Gio.AsyncResult) => {
+                      const bytes =
+                        this._stream!.input_stream.read_bytes_finish(result);
 
-                    if (bytes != null) {
-                      p3.resolve(bytes.unref_to_array());
-                    } else {
-                      p3.reject(new FsError("Failed to read from stream."));
-                    }
-                  })
-                );
-              }
-            );
-
-            if (nextBytes.byteLength === 0) {
-              break;
-            } else {
-              const newResult = new Uint8Array(
-                result.byteLength + nextBytes.byteLength
+                      if (bytes != null) {
+                        p3.resolve(bytes.unref_to_array());
+                      } else {
+                        p3.reject(new FsError("Failed to read from stream."));
+                      }
+                    })
+                  );
+                }
               );
-              newResult.set(result);
-              newResult.set(nextBytes, result.byteLength);
-              result = newResult;
-            }
-          }
 
-          p2.resolve(result);
-        });
+              if (nextBytes.byteLength === 0) {
+                break;
+              } else {
+                const newResult = new Uint8Array(
+                  result.byteLength + nextBytes.byteLength
+                );
+                newResult.set(result);
+                newResult.set(nextBytes, result.byteLength);
+                result = newResult;
+              }
+            }
+
+            p2.resolve(result);
+          }
+        );
       } finally {
         this._mutex.release();
       }
@@ -414,7 +431,7 @@ class IOStream {
   public async truncate(length: number) {
     return await promise("IOStream.truncate", null, async (p) => {
       this._ensureCanTruncate();
-      validateNumber(length);
+      validatePositiveInteger(length);
 
       await this._mutex.acquire();
 

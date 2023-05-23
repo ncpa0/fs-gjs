@@ -326,10 +326,6 @@ class SyncFs {
     this.makeLink = sync("makeLink", this.makeLink.bind(this));
     this.chmod = sync("chmod", this.chmod.bind(this));
     this.chown = sync("chown", this.chown.bind(this));
-    this.openFileIOStream = sync(
-      "openIOStream",
-      this.openFileIOStream.bind(this)
-    );
   }
 
   private resolvePath(path: string, cwd?: string) {

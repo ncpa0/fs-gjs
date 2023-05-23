@@ -8,7 +8,8 @@ import {
   match,
 } from "@reactgjs/gest";
 import GLib from "gi://GLib?version=2.0";
-import { Fs, FsError, SyncFs, SyncIOStream } from "../src/index";
+import { Fs, SyncFs, SyncIOStream } from "../src/index";
+import { matchFsError, matchMessageContaining } from "./shared";
 
 const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
 Praesent quis turpis pharetra, lobortis felis vitae, lacinia magna.
@@ -37,20 +38,6 @@ let _i = 1;
 const getNextTestFile = () => `test${_i++}`;
 
 const TMP_DIR_PATH = GLib.get_current_dir() + "/__tests__/sync-fs-test-tmp";
-
-const matchFsError = (message: any) => {
-  return match.allOf(
-    {
-      message,
-      stack: match.type("string"),
-    },
-    match.instanceOf(FsError)
-  );
-};
-
-const matchMessageContaining = (...str: string[]) => {
-  return match.allOf(...str.map((r) => match.stringContaining(r)));
-};
 
 export default describe("Fs", () => {
   let testFile = "";

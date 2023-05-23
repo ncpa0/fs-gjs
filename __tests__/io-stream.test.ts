@@ -8,6 +8,7 @@ import {
 } from "@reactgjs/gest";
 import GLib from "gi://GLib?version=2.0";
 import { Fs } from "../src/index";
+import { compareBytes, encode, matchFsError } from "./shared";
 
 const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
   Praesent quis turpis pharetra, lobortis felis vitae, lacinia magna.
@@ -31,22 +32,6 @@ const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit.
   dignissim augue, a sagittis erat arcu et metus. Lorem ipsum dolor sit 
   amet, consectetur adipiscing elit. Donec at commodo purus.
   `;
-
-const encode = (str: string) => new TextEncoder().encode(str);
-
-const compareBytes = (a: Uint8Array, b: Uint8Array) => {
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  for (let i = 0; i < a.length; ++i) {
-    if (a[i] !== b[i]) {
-      return false;
-    }
-  }
-
-  return true;
-};
 
 let _i = 1;
 const getNextTestFile = () => `test${_i++}`;
@@ -254,6 +239,241 @@ export default describe("IOStream", () => {
       } finally {
         await stream.close();
       }
+    });
+  });
+
+  describe("negative scenarios", () => {
+    describe("invalid options", () => {
+      describe("openFile", () => {
+        it("should fail when invalid option given: 'ioPriority'", async () => {
+          await expect(
+            fs.openFileIOStream(testFile, "CREATE", {
+              ioPriority: "1000" as any,
+            })
+          ).toRejectMatch(
+            matchFsError(
+              "'IOStream.openFile' failed with error: Invalid option 'ioPriority' - Expected a [number]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'etag'", async () => {
+          await expect(
+            fs.openFileIOStream(testFile, "CREATE", { etag: 100 as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'IOStream.openFile' failed with error: Invalid option 'etag' - Expected a [string]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'makeBackup'", async () => {
+          await expect(
+            fs.openFileIOStream(testFile, "CREATE", { makeBackup: "." as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'IOStream.openFile' failed with error: Invalid option 'makeBackup' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'private'", async () => {
+          await expect(
+            fs.openFileIOStream(testFile, "CREATE", { private: "yes" as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'IOStream.openFile' failed with error: Invalid option 'private' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'replace'", async () => {
+          await expect(
+            fs.openFileIOStream(testFile, "CREATE", { replace: [true] as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'IOStream.openFile' failed with error: Invalid option 'replace' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid type argument is given", async () => {
+          await expect(
+            fs.openFileIOStream(testFile, "create" as any)
+          ).toRejectMatch(
+            matchFsError(
+              "'IOStream.openFile' failed with error: Invalid IOStream type."
+            )
+          );
+        });
+      });
+
+      describe("seek", () => {
+        it("should fail when invalid given invalid argument", async () => {
+          const stream = await fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            await expect(stream.seek("1" as any)).toRejectMatch(
+              matchFsError(
+                "'IOStream.seek' failed with error: Expected a [integer]."
+              )
+            );
+            await expect(stream.seek(1.1)).toRejectMatch(
+              matchFsError(
+                "'IOStream.seek' failed with error: Expected a [integer]."
+              )
+            );
+          } finally {
+            await stream.close();
+          }
+        });
+      });
+
+      describe("seekFromEnd", () => {
+        it("should fail when invalid given invalid argument", async () => {
+          const stream = await fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            await expect(stream.seekFromEnd(NaN as any)).toRejectMatch(
+              matchFsError(
+                "'IOStream.seekFromEnd' failed with error: Expected a [integer]."
+              )
+            );
+          } finally {
+            await stream.close();
+          }
+        });
+      });
+
+      describe("seekFromStart", () => {
+        it("should fail when invalid given invalid argument", async () => {
+          const stream = await fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            await expect(stream.seekFromStart({} as any)).toRejectMatch(
+              matchFsError(
+                "'IOStream.seekFromStart' failed with error: Expected a [integer]."
+              )
+            );
+          } finally {
+            await stream.close();
+          }
+        });
+      });
+
+      describe("skip", () => {
+        it("should fail when invalid given invalid argument", async () => {
+          const stream = await fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            await expect(stream.skip([1] as any)).toRejectMatch(
+              matchFsError(
+                "'IOStream.skip' failed with error: Expected a [positive integer]."
+              )
+            );
+          } finally {
+            await stream.close();
+          }
+        });
+      });
+
+      describe("write", () => {
+        it("should fail when invalid given invalid argument", async () => {
+          const stream = await fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            await expect(stream.write([] as any)).toRejectMatch(
+              matchFsError(
+                "'IOStream.write' failed with error: Expected a [Uint8Array]."
+              )
+            );
+          } finally {
+            await stream.close();
+          }
+        });
+      });
+
+      describe("read", () => {
+        it("should fail when invalid given invalid argument", async () => {
+          const stream = await fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            await expect(stream.read(NaN)).toRejectMatch(
+              matchFsError(
+                "'IOStream.read' failed with error: Expected a [positive integer]."
+              )
+            );
+            await expect(stream.read(-1)).toRejectMatch(
+              matchFsError(
+                "'IOStream.read' failed with error: Expected a [positive integer]."
+              )
+            );
+            await expect(stream.read(1.1)).toRejectMatch(
+              matchFsError(
+                "'IOStream.read' failed with error: Expected a [positive integer]."
+              )
+            );
+          } finally {
+            await stream.close();
+          }
+        });
+      });
+
+      describe("readAll", () => {
+        it("should fail when invalid given invalid 'chunkSize' argument", async () => {
+          const stream = await fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            await expect(
+              stream.readAll({ chunkSize: "" as any })
+            ).toRejectMatch(
+              matchFsError(
+                "'IOStream.readAll' failed with error: Expected a [positive integer]."
+              )
+            );
+            await expect(stream.readAll({ chunkSize: 0 })).toRejectMatch(
+              matchFsError(
+                "'IOStream.readAll' failed with error: Expected a [positive integer]."
+              )
+            );
+            await expect(
+              stream.readAll({ chunkSize: (0.1 + 0.2) * 10 })
+            ).toRejectMatch(
+              matchFsError(
+                "'IOStream.readAll' failed with error: Expected a [positive integer]."
+              )
+            );
+          } finally {
+            await stream.close();
+          }
+        });
+      });
+
+      describe("truncate", () => {
+        it("should fail when invalid given invalid argument", async () => {
+          const stream = await fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            await expect(stream.truncate("1" as any)).toRejectMatch(
+              matchFsError(
+                "'IOStream.truncate' failed with error: Expected a [positive integer]."
+              )
+            );
+            await expect(stream.truncate(-1)).toRejectMatch(
+              matchFsError(
+                "'IOStream.truncate' failed with error: Expected a [positive integer]."
+              )
+            );
+            await expect(stream.truncate(1.1)).toRejectMatch(
+              matchFsError(
+                "'IOStream.truncate' failed with error: Expected a [positive integer]."
+              )
+            );
+          } finally {
+            await stream.close();
+          }
+        });
+      });
     });
   });
 });

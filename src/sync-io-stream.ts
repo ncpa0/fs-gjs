@@ -6,7 +6,12 @@ import { getCreateFileFlag } from "./flags";
 import type { IOStreamType } from "./io-stream";
 import { OptionsResolver } from "./option-resolver";
 import { SyncFs, sync } from "./sync-fs";
-import { OptValidators, validateBytes, validateNumber } from "./validators";
+import {
+  OptValidators,
+  validateBytes,
+  validateInteger,
+  validatePositiveInteger,
+} from "./validators";
 
 interface SyncIOStreamOptions extends FileCreateFlagOptions {
   cwd?: string;
@@ -41,11 +46,20 @@ class SyncIOStream {
   ) {
     this._options = OptionsResolver(options, OptValidators);
 
+    /** Options are validated on access */
+    this._options.get("cwd");
+    this._options.get("etag");
+    this._options.get("makeBackup");
+    this._options.get("private");
+    this._options.get("replace");
+
     this.close = sync("SyncIOStream.close", this.close.bind(this));
     this.flush = sync("SyncIOStream.flush", this.flush.bind(this));
     this.read = sync("SyncIOStream.read", this.read.bind(this));
+    this.readAll = sync("SyncIOStream.readAll", this.readAll.bind(this));
     this.truncate = sync("SyncIOStream.truncate", this.truncate.bind(this));
     this.write = sync("SyncIOStream.write", this.write.bind(this));
+    this.skip = sync("SyncIOStream.skip", this.skip.bind(this));
     this.seek = sync("SyncIOStream.seek", this.seek.bind(this));
     this.seekFromEnd = sync(
       "SyncIOStream.seekFromEnd",
@@ -54,6 +68,10 @@ class SyncIOStream {
     this.seekFromStart = sync(
       "SyncIOStream.seekFromStart",
       this.seekFromStart.bind(this)
+    );
+    this.currentPosition = sync(
+      "SyncIOStream.currentPosition",
+      this.currentPosition.bind(this)
     );
   }
 
@@ -130,7 +148,7 @@ class SyncIOStream {
 
   public seek(offset: number) {
     this._ensureCanSeek();
-    validateNumber(offset);
+    validateInteger(offset);
 
     const success = this._stream!.seek(offset, GLib.SeekType.CUR, null);
 
@@ -141,7 +159,7 @@ class SyncIOStream {
 
   public seekFromEnd(offset: number) {
     this._ensureCanSeek();
-    validateNumber(offset);
+    validateInteger(offset);
 
     const success = this._stream!.seek(offset, GLib.SeekType.END, null);
 
@@ -152,7 +170,7 @@ class SyncIOStream {
 
   public seekFromStart(offset: number) {
     this._ensureCanSeek();
-    validateNumber(offset);
+    validateInteger(offset);
 
     const success = this._stream!.seek(offset, GLib.SeekType.SET, null);
 
@@ -162,7 +180,7 @@ class SyncIOStream {
   }
 
   public skip(offset: number) {
-    validateNumber(offset);
+    validatePositiveInteger(offset);
     const bytesSkipped = this._stream!.input_stream.skip(offset, null);
 
     if (bytesSkipped === -1) {
@@ -190,7 +208,7 @@ class SyncIOStream {
   }
 
   public read(byteCount: number) {
-    validateNumber(byteCount);
+    validatePositiveInteger(byteCount);
 
     const bytes = this._stream!.input_stream.read_bytes(byteCount, null);
 
@@ -203,7 +221,7 @@ class SyncIOStream {
 
   public readAll(options?: { chunkSize?: number }) {
     const { chunkSize = 500000 } = options ?? {};
-    validateNumber(chunkSize);
+    validatePositiveInteger(chunkSize);
 
     let result = new Uint8Array([]);
 
@@ -233,7 +251,7 @@ class SyncIOStream {
 
   public truncate(length: number) {
     this._ensureCanTruncate();
-    validateNumber(length);
+    validatePositiveInteger(length);
 
     const success = this._stream!.truncate(length, null);
 

@@ -19,6 +19,10 @@ function validateType<
   if (typeof v !== t) {
     throw new InvalidOptionError(name, t);
   }
+
+  if (t === "number" && Number.isNaN(v)) {
+    throw new InvalidOptionError(name, t);
+  }
 }
 
 const validateAbortSignal = (v: any) => {
@@ -86,7 +90,7 @@ const validateTrash = (v: any) => {
 const validateBatchSize = (v: any) => {
   validateType(v, "batchSize", "number");
 
-  if (v < 0 || !Number.isInteger(v)) {
+  if (v <= 0 || !Number.isInteger(v)) {
     throw new InvalidOptionError("batchSize", "positive integer");
   }
 };
@@ -156,8 +160,41 @@ export function validateText(v: any, name?: string): asserts v is string {
 }
 
 export function validateNumber(v: any, name?: string): asserts v is number {
-  if (typeof v !== "number") {
+  if (typeof v !== "number" || Number.isNaN(v)) {
     throw new TypeError("Expected a [number]." + (name ? ` (${name})` : ""));
+  }
+}
+
+export function validatePositiveNumber(
+  v: any,
+  name?: string
+): asserts v is number {
+  if (typeof v !== "number" || Number.isNaN(v) || v <= 0) {
+    throw new TypeError(
+      "Expected a [positive number]." + (name ? ` (${name})` : "")
+    );
+  }
+}
+
+export function validateInteger(v: any, name?: string): asserts v is number {
+  if (typeof v !== "number" || Number.isNaN(v) || !Number.isInteger(v)) {
+    throw new TypeError("Expected a [integer]." + (name ? ` (${name})` : ""));
+  }
+}
+
+export function validatePositiveInteger(
+  v: any,
+  name?: string
+): asserts v is number {
+  if (
+    typeof v !== "number" ||
+    Number.isNaN(v) ||
+    v <= 0 ||
+    !Number.isInteger(v)
+  ) {
+    throw new TypeError(
+      "Expected a [positive integer]." + (name ? ` (${name})` : "")
+    );
   }
 }
 

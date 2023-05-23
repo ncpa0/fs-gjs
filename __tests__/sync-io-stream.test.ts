@@ -8,6 +8,7 @@ import {
 } from "@reactgjs/gest";
 import GLib from "gi://GLib?version=2.0";
 import { Fs, SyncFs } from "../src/index";
+import { compareBytes, encode, matchFsError } from "./shared";
 
 const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
     Praesent quis turpis pharetra, lobortis felis vitae, lacinia magna.
@@ -31,22 +32,6 @@ const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit.
     dignissim augue, a sagittis erat arcu et metus. Lorem ipsum dolor sit 
     amet, consectetur adipiscing elit. Donec at commodo purus.
     `;
-
-const encode = (str: string) => new TextEncoder().encode(str);
-
-const compareBytes = (a: Uint8Array, b: Uint8Array) => {
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  for (let i = 0; i < a.length; ++i) {
-    if (a[i] !== b[i]) {
-      return false;
-    }
-  }
-
-  return true;
-};
 
 let _i = 1;
 const getNextTestFile = () => `test${_i++}`;
@@ -251,6 +236,227 @@ export default describe("SyncIOStream", () => {
       } finally {
         stream.close();
       }
+    });
+  });
+
+  describe("negative scenarios", () => {
+    describe("invalid options", () => {
+      describe("openFile", () => {
+        it("should fail when invalid option given: 'etag'", () => {
+          expect(() =>
+            fs.openFileIOStream(testFile, "CREATE", { etag: 100 as any })
+          ).toThrowMatch(
+            matchFsError(
+              "'SyncIOStream.openFile' failed with error: Invalid option 'etag' - Expected a [string]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'makeBackup'", () => {
+          expect(() =>
+            fs.openFileIOStream(testFile, "CREATE", { makeBackup: "." as any })
+          ).toThrowMatch(
+            matchFsError(
+              "'SyncIOStream.openFile' failed with error: Invalid option 'makeBackup' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'private'", () => {
+          expect(() =>
+            fs.openFileIOStream(testFile, "CREATE", { private: "yes" as any })
+          ).toThrowMatch(
+            matchFsError(
+              "'SyncIOStream.openFile' failed with error: Invalid option 'private' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'replace'", () => {
+          expect(() =>
+            fs.openFileIOStream(testFile, "CREATE", { replace: [true] as any })
+          ).toThrowMatch(
+            matchFsError(
+              "'SyncIOStream.openFile' failed with error: Invalid option 'replace' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid type argument is given", () => {
+          expect(() =>
+            fs.openFileIOStream(testFile, "create" as any)
+          ).toThrowMatch(
+            matchFsError(
+              "'SyncIOStream.openFile' failed with error: Invalid IOStream type."
+            )
+          );
+        });
+      });
+
+      describe("seek", () => {
+        it("should fail when invalid given invalid argument", () => {
+          const stream = fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            expect(() => stream.seek("1" as any)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.seek' failed with error: Expected a [integer]."
+              )
+            );
+            expect(() => stream.seek(1.1)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.seek' failed with error: Expected a [integer]."
+              )
+            );
+          } finally {
+            stream.close();
+          }
+        });
+      });
+
+      describe("seekFromEnd", () => {
+        it("should fail when invalid given invalid argument", () => {
+          const stream = fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            expect(() => stream.seekFromEnd(NaN as any)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.seekFromEnd' failed with error: Expected a [integer]."
+              )
+            );
+          } finally {
+            stream.close();
+          }
+        });
+      });
+
+      describe("seekFromStart", () => {
+        it("should fail when invalid given invalid argument", () => {
+          const stream = fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            expect(() => stream.seekFromStart({} as any)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.seekFromStart' failed with error: Expected a [integer]."
+              )
+            );
+          } finally {
+            stream.close();
+          }
+        });
+      });
+
+      describe("skip", () => {
+        it("should fail when invalid given invalid argument", () => {
+          const stream = fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            expect(() => stream.skip([1] as any)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.skip' failed with error: Expected a [positive integer]."
+              )
+            );
+          } finally {
+            stream.close();
+          }
+        });
+      });
+
+      describe("write", () => {
+        it("should fail when invalid given invalid argument", () => {
+          const stream = fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            expect(() => stream.write([] as any)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.write' failed with error: Expected a [Uint8Array]."
+              )
+            );
+          } finally {
+            stream.close();
+          }
+        });
+      });
+
+      describe("read", () => {
+        it("should fail when invalid given invalid argument", () => {
+          const stream = fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            expect(() => stream.read(NaN)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.read' failed with error: Expected a [positive integer]."
+              )
+            );
+            expect(() => stream.read(-1)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.read' failed with error: Expected a [positive integer]."
+              )
+            );
+            expect(() => stream.read(1.1)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.read' failed with error: Expected a [positive integer]."
+              )
+            );
+          } finally {
+            stream.close();
+          }
+        });
+      });
+
+      describe("readAll", () => {
+        it("should fail when invalid given invalid 'chunkSize' argument", () => {
+          const stream = fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            expect(() => stream.readAll({ chunkSize: "" as any })).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.readAll' failed with error: Expected a [positive integer]."
+              )
+            );
+            expect(() => stream.readAll({ chunkSize: 0 })).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.readAll' failed with error: Expected a [positive integer]."
+              )
+            );
+            expect(() =>
+              stream.readAll({ chunkSize: (0.1 + 0.2) * 10 })
+            ).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.readAll' failed with error: Expected a [positive integer]."
+              )
+            );
+          } finally {
+            stream.close();
+          }
+        });
+      });
+
+      describe("truncate", () => {
+        it("should fail when invalid given invalid argument", () => {
+          const stream = fs.openFileIOStream(testFile, "CREATE");
+
+          try {
+            expect(() => stream.truncate("1" as any)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.truncate' failed with error: Expected a [positive integer]."
+              )
+            );
+            expect(() => stream.truncate(-1)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.truncate' failed with error: Expected a [positive integer]."
+              )
+            );
+            expect(() => stream.truncate(1.1)).toThrowMatch(
+              matchFsError(
+                "'SyncIOStream.truncate' failed with error: Expected a [positive integer]."
+              )
+            );
+          } finally {
+            stream.close();
+          }
+        });
+      });
     });
   });
 });
