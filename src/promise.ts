@@ -11,7 +11,7 @@ type PromiseApi<T> = {
    * Creates a callback function, if that function ever throws,
    * this promise will reject with the thrown error.
    */
-  subCall: <F extends (...args: any[]) => any>(callback: F) => F;
+  asyncCallback: <F extends (...args: any[]) => any>(callback: F) => F;
   /**
    * If this operation was aborted this will throw an error,
    * stopping the execution of next operations.
@@ -69,10 +69,20 @@ export const promise = <T = void>(
       });
     }
 
-    const subCall = <F extends (...args: any[]) => any>(callback: F): F => {
+    const asyncCallback = <F extends (...args: any[]) => any>(
+      callback: F
+    ): F => {
       return ((...args: any[]) => {
         try {
-          callback.apply(null, args);
+          const r = callback.apply(null, args);
+          if (r && r instanceof Promise) {
+            r.catch((err) => {
+              if (BreakPointError.isBreakPointError(err)) {
+                return;
+              }
+              reject(parseFsError(name, err));
+            });
+          }
         } catch (err) {
           if (BreakPointError.isBreakPointError(err)) {
             return;
@@ -96,7 +106,7 @@ export const promise = <T = void>(
       await callback({
         resolve,
         reject: (e) => reject(parseFsError(name, e)),
-        subCall,
+        asyncCallback,
         breakpoint,
         cancellable,
       });

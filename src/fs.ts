@@ -12,12 +12,17 @@ import { getCopyFileFlag, getCreateFileFlag, getQueryFileFlag } from "./flags";
 import type { IOStreamOptions, IOStreamType } from "./io-stream";
 import { IOStream } from "./io-stream";
 import { OptionsResolver } from "./option-resolver";
-import { OptValidators } from "./option-validators";
 import { isAbsolute, join } from "./path";
 import type { FilePermission } from "./permission-parser";
 import { parseFilePermission } from "./permission-parser";
 import { promise } from "./promise";
 import { SyncFs, sync } from "./sync-fs";
+import {
+  OptValidators,
+  validateBytes,
+  validateNumber,
+  validateText,
+} from "./validators";
 
 type Tail<T extends any[]> = T extends [any, ...infer U] ? U : [];
 
@@ -84,7 +89,7 @@ interface CopyFileOptions
   onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
 }
 
-interface DeleteFileOptions extends Mixin<[ListDirOptions]> {
+interface DeleteFileOptions extends Mixin<[FileInfoOptions, ListDirOptions]> {
   trash?: boolean;
   ioPriority?: number;
   recursive?: boolean;
@@ -111,6 +116,8 @@ interface ChownOptions
 interface FsOptions {
   cwd?: string;
 }
+
+const DEFAULT_BATCH_SIZE = 16;
 
 class Fs {
   // #region Static
@@ -321,23 +328,24 @@ class Fs {
 
     this.resolvePath = sync("resolvePath", this.resolvePath.bind(this));
     this.file = sync("file", this.file.bind(this));
-    this.deleteFile = this.deleteFile.bind(this);
+    this.fileExists = this.fileExists.bind(this);
+    this.listDir = this.listDir.bind(this);
+    this.listFilenames = this.listFilenames.bind(this);
+    this.fileInfo = this.fileInfo.bind(this);
+    this.readFile = this.readFile.bind(this);
+    this.readTextFile = this.readTextFile.bind(this);
+    this.writeFile = this.writeFile.bind(this);
+    this.writeTextFile = this.writeTextFile.bind(this);
+    this.appendFile = this.appendFile.bind(this);
+    this.appendTextFile = this.appendTextFile.bind(this);
     this.moveFile = this.moveFile.bind(this);
     this.renameFile = this.renameFile.bind(this);
     this.copyFile = this.copyFile.bind(this);
-    this.writeFile = this.writeFile.bind(this);
-    this.writeTextFile = this.writeTextFile.bind(this);
-    this.readFile = this.readFile.bind(this);
-    this.readTextFile = this.readTextFile.bind(this);
-    this.listDir = this.listDir.bind(this);
-    this.fileInfo = this.fileInfo.bind(this);
+    this.deleteFile = this.deleteFile.bind(this);
     this.makeDir = this.makeDir.bind(this);
     this.makeLink = this.makeLink.bind(this);
     this.chmod = this.chmod.bind(this);
     this.chown = this.chown.bind(this);
-    this.appendFile = this.appendFile.bind(this);
-    this.appendTextFile = this.appendTextFile.bind(this);
-    this.fileExists = this.fileExists.bind(this);
     this.openFileIOStream = this.openFileIOStream.bind(this);
   }
 
@@ -367,7 +375,7 @@ class Fs {
         queryFlag,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
-        p.subCall((_, result: Gio.AsyncResult) => {
+        p.asyncCallback((_, result: Gio.AsyncResult) => {
           try {
             file.query_info_finish(result);
             p.resolve(true);
@@ -386,7 +394,7 @@ class Fs {
 
     return promise<FileInfo[]>("listDir", opt.get("abortSignal"), async (p) => {
       const ioPriority = opt.get("ioPriority", GLib.PRIORITY_DEFAULT);
-      const batchSize = opt.get("batchSize", 50);
+      const batchSize = opt.get("batchSize", DEFAULT_BATCH_SIZE);
 
       const enumerator = await promise<Gio.FileEnumerator>(
         "listDir",
@@ -399,7 +407,7 @@ class Fs {
             queryFlag,
             ioPriority,
             p2.cancellable,
-            p2.subCall((_, result: Gio.AsyncResult) => {
+            p2.asyncCallback((_, result: Gio.AsyncResult) => {
               const enumerator = dir.enumerate_children_finish(result);
               if (enumerator) {
                 p2.resolve(enumerator);
@@ -419,13 +427,11 @@ class Fs {
             batchSize,
             ioPriority,
             p3.cancellable,
-            p3.subCall((_, result: Gio.AsyncResult) => {
+            p3.asyncCallback((_, result: Gio.AsyncResult) => {
               p3.resolve(enumerator.next_files_finish(result) ?? []);
             })
           );
         });
-
-      p.breakpoint();
 
       const allFiles: FileInfo[] = [];
 
@@ -463,7 +469,7 @@ class Fs {
       opt.get("abortSignal"),
       async (p) => {
         const ioPriority = opt.get("ioPriority", GLib.PRIORITY_DEFAULT);
-        const batchSize = opt.get("batchSize", 50);
+        const batchSize = opt.get("batchSize", DEFAULT_BATCH_SIZE);
 
         const enumerator = await promise<Gio.FileEnumerator>(
           "listDir",
@@ -476,7 +482,7 @@ class Fs {
               queryFlag,
               ioPriority,
               p2.cancellable,
-              p2.subCall((_, result: Gio.AsyncResult) => {
+              p2.asyncCallback((_, result: Gio.AsyncResult) => {
                 const enumerator = dir.enumerate_children_finish(result);
                 if (enumerator) {
                   p2.resolve(enumerator);
@@ -496,13 +502,11 @@ class Fs {
               batchSize,
               ioPriority,
               p3.cancellable,
-              p3.subCall((_, result: Gio.AsyncResult) => {
+              p3.asyncCallback((_, result: Gio.AsyncResult) => {
                 p3.resolve(enumerator.next_files_finish(result) ?? []);
               })
             );
           });
-
-        p.breakpoint();
 
         const allFiles: string[] = [];
 
@@ -533,16 +537,14 @@ class Fs {
     const opt = OptionsResolver(options, OptValidators);
 
     return promise<FileInfo>("fileInfo", opt.get("abortSignal"), (p) => {
-      const flag = opt.get("followSymlinks", false)
-        ? Gio.FileQueryInfoFlags.NONE
-        : Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS;
+      const queryFlag = getQueryFileFlag(opt);
 
       file.query_info_async(
         getAttributes(opt.get("attributes", [])),
-        flag,
+        queryFlag,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
-        p.subCall((_, result: Gio.AsyncResult) => {
+        p.asyncCallback((_, result: Gio.AsyncResult) => {
           const ginfo = file.query_info_finish(result);
           if (ginfo) {
             p.resolve(new FileInfo(file.get_path()!, ginfo));
@@ -566,12 +568,12 @@ class Fs {
     const opt = OptionsResolver(options, OptValidators);
 
     return promise<Uint8Array>("readFile", opt.get("abortSignal"), (p) => {
-      file.load_contents_async(
+      file.load_bytes_async(
         p.cancellable,
-        p.subCall((_, result: Gio.AsyncResult) => {
-          const [success, contents] = file.load_contents_finish(result);
-          if (success) {
-            p.resolve(contents);
+        p.asyncCallback((_, result: Gio.AsyncResult) => {
+          const [bytes] = file.load_bytes_finish(result);
+          if (bytes != null) {
+            p.resolve(bytes.unref_to_array());
           } else {
             p.reject(new FsError(`Failed to read file: ${file.get_path()}`));
           }
@@ -604,6 +606,8 @@ class Fs {
     const opt = OptionsResolver(options, OptValidators);
 
     return promise("writeFile", opt.get("abortSignal"), async (p) => {
+      validateBytes(contents);
+
       const createFlag = getCreateFileFlag(opt);
       const ioPriority = opt.get("ioPriority", GLib.PRIORITY_DEFAULT);
 
@@ -617,8 +621,8 @@ class Fs {
               opt.get("makeBackup", false),
               createFlag,
               ioPriority,
-              p.cancellable,
-              p.subCall((_, result: Gio.AsyncResult) => {
+              p2.cancellable,
+              p2.asyncCallback((_, result: Gio.AsyncResult) => {
                 const stream = file.replace_finish(result);
                 if (stream) {
                   p2.resolve(stream);
@@ -639,7 +643,7 @@ class Fs {
             stream.close_async(
               ioPriority,
               null,
-              p3.subCall((_, result: Gio.AsyncResult) => {
+              p3.asyncCallback((_, result: Gio.AsyncResult) => {
                 const success = stream.close_finish(result);
                 if (success) {
                   p3.resolve();
@@ -661,7 +665,7 @@ class Fs {
           opt.get("makeBackup", false),
           createFlag,
           p.cancellable,
-          p.subCall((_, result: Gio.AsyncResult) => {
+          p.asyncCallback((_, result: Gio.AsyncResult) => {
             const [success] = file.replace_contents_finish(result);
             if (success) {
               p.resolve();
@@ -684,11 +688,18 @@ class Fs {
     contents: string,
     options?: WriteTextFileOptions
   ) {
-    const encoder = new TextEncoder();
+    const opt = OptionsResolver(options, OptValidators);
 
-    const data = encoder.encode(contents);
+    return promise("writeTextFile", opt.get("abortSignal"), async (p) => {
+      validateText(contents);
 
-    return this.writeFile(path, data, options);
+      const encoder = new TextEncoder();
+      const data = encoder.encode(contents);
+
+      await this.writeFile(path, data, options);
+
+      p.resolve();
+    });
   }
 
   /** Appends the given data to a file under the given path. */
@@ -701,9 +712,10 @@ class Fs {
     const opt = OptionsResolver(options, OptValidators);
 
     return promise("appendFile", opt.get("abortSignal"), async (p) => {
+      validateBytes(contents);
+
       if (contents.byteLength === 0) {
-        p.resolve();
-        return;
+        return p.resolve(); // appending empty buffer is a no-op
       }
 
       const stream = await promise<Gio.FileOutputStream>(
@@ -716,7 +728,7 @@ class Fs {
             createFlag,
             opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
             p2.cancellable,
-            p2.subCall((_, result: Gio.AsyncResult) => {
+            p2.asyncCallback((_, result: Gio.AsyncResult) => {
               const outputStream = file.append_to_finish(result);
               if (outputStream) {
                 p2.resolve(outputStream);
@@ -739,7 +751,7 @@ class Fs {
             bytes,
             opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
             p3.cancellable,
-            p3.subCall((_, result: Gio.AsyncResult) => {
+            p3.asyncCallback((_, result: Gio.AsyncResult) => {
               const bytesWritten = stream.write_bytes_finish(result);
               if (bytesWritten === -1) {
                 p3.reject(new FsError("Failed to write to stream."));
@@ -754,7 +766,7 @@ class Fs {
           stream.close_async(
             opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
             null,
-            p4.subCall((_, result: Gio.AsyncResult) => {
+            p4.asyncCallback((_, result: Gio.AsyncResult) => {
               const success = stream.close_finish(result);
               if (success) {
                 p4.resolve();
@@ -780,11 +792,18 @@ class Fs {
     contents: string,
     options?: AppendTextFileOptions
   ) {
-    const encoder = new TextEncoder();
+    const opt = OptionsResolver(options, OptValidators);
 
-    const data = encoder.encode(contents);
+    return promise("appendTextFile", opt.get("abortSignal"), async (p) => {
+      validateText(contents);
 
-    return this.appendFile(path, data, options);
+      const encoder = new TextEncoder();
+      const data = encoder.encode(contents);
+
+      await this.appendFile(path, data, options);
+
+      p.resolve();
+    });
   }
 
   /** Moves a file or directory from one path to another. */
@@ -806,7 +825,7 @@ class Fs {
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
         opt.get("onProgress", null),
-        p.subCall((_, result: Gio.AsyncResult) => {
+        p.asyncCallback((_, result: Gio.AsyncResult) => {
           const success = oldFile.move_finish(result);
           if (success) {
             p.resolve();
@@ -851,7 +870,7 @@ class Fs {
         p.cancellable,
         // @ts-expect-error
         opt.get("onProgress", null),
-        p.subCall((_: any, result: Gio.AsyncResult) => {
+        p.asyncCallback((_: any, result: Gio.AsyncResult) => {
           const success = srcFile.copy_finish(result);
           if (success) {
             p.resolve();
@@ -876,13 +895,14 @@ class Fs {
   public deleteFile(path: string, options?: DeleteFileOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
+    opt.setDefault("followSymlinks", false);
 
     return promise("deleteFile", opt.get("abortSignal"), async (p) => {
       if (opt.get("trash", false)) {
         file.trash_async(
           opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
           p.cancellable,
-          p.subCall((_, result: Gio.AsyncResult) => {
+          p.asyncCallback((_, result: Gio.AsyncResult) => {
             const success = file.trash_finish(result);
             if (success) {
               p.resolve();
@@ -900,20 +920,24 @@ class Fs {
         (await this.fileInfo(path, options)).isDirectory
       ) {
         p.breakpoint();
-        const files = await this.listDir(path, options);
+
+        const files = await this.listFilenames(path, options);
 
         p.breakpoint();
+
         await Promise.all(
-          files.map((file) => this.deleteFile(file.filepath, options))
+          files.map((filename) =>
+            this.deleteFile(join(path, filename), options)
+          )
         );
-
-        p.breakpoint();
       }
+
+      p.breakpoint();
 
       file.delete_async(
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
-        p.subCall((_, result: Gio.AsyncResult) => {
+        p.asyncCallback((_, result: Gio.AsyncResult) => {
           const success = file.delete_finish(result);
           if (success) {
             p.resolve();
@@ -934,7 +958,7 @@ class Fs {
       file.make_directory_async(
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
-        p.subCall((_, result: Gio.AsyncResult) => {
+        p.asyncCallback((_, result: Gio.AsyncResult) => {
           const success = file.make_directory_finish(result);
           if (success) {
             p.resolve();
@@ -971,7 +995,7 @@ class Fs {
         dest,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
-        p.subCall((_, result: Gio.AsyncResult) => {
+        p.asyncCallback((_, result: Gio.AsyncResult) => {
           const success = linkFile.make_symbolic_link_finish(result);
           if (success) {
             p.resolve();
@@ -1012,7 +1036,7 @@ class Fs {
         queryFlag,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
-        p.subCall((_, result: Gio.AsyncResult) => {
+        p.asyncCallback((_, result: Gio.AsyncResult) => {
           const [success] = file.set_attributes_finish(result);
           if (success) {
             p.resolve();
@@ -1034,11 +1058,12 @@ class Fs {
     const opt = OptionsResolver(options, OptValidators);
 
     return promise("chown", opt.get("abortSignal"), async (p) => {
+      validateNumber(uid, "uid");
+      validateNumber(gid, "gid");
+
       const queryFlag = getQueryFileFlag(opt);
 
-      const { _gioInfo: info } = await this.fileInfo(path, options);
-      p.breakpoint();
-
+      const info = Gio.FileInfo.new();
       info.set_attribute_uint32("unix::uid", uid);
       info.set_attribute_uint32("unix::gid", gid);
 
@@ -1047,7 +1072,7 @@ class Fs {
         queryFlag,
         opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
         p.cancellable,
-        p.subCall((_, result: Gio.AsyncResult) => {
+        p.asyncCallback((_, result: Gio.AsyncResult) => {
           const [success] = file.set_attributes_finish(result);
 
           if (success) {
@@ -1103,3 +1128,4 @@ export type {
   ChmodOptions,
   ChownOptions,
 };
+

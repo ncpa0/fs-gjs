@@ -9,18 +9,17 @@ export class FsError extends Error {
     return fsErr;
   }
 
-  private _isPrefixAdded = false;
+  private _originalMessage;
 
   constructor(msg: string) {
     super(msg);
+    this._originalMessage = msg;
     this.name = "FsError";
   }
 
-  addMessagePrefix(msg: string) {
-    if (this._isPrefixAdded) return; // Prevent adding prefix twice.
-
-    this.message = `${msg}: ${this.message}`;
-    this._isPrefixAdded = true;
+  setOriginFunctionName(name: string) {
+    this.message = `'${name}' failed with error: ${this._originalMessage}`;
+    return this;
   }
 }
 

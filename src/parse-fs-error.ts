@@ -1,41 +1,29 @@
-import Gio from "gi://Gio?version=2.0";
 import { FsError } from "./errors";
-
-declare class GioIOError {
-  message?: string;
-  stack?: string;
-}
 
 export const parseFsError = (name: string, err: any): FsError => {
   if (err instanceof Error) {
-    if (!FsError.isFsError(err)) {
-      err = FsError.from(err);
+    if (FsError.isFsError(err)) {
+      err.setOriginFunctionName(name);
+    } else {
+      err = FsError.from(err).setOriginFunctionName(name);
     }
-    err.addMessagePrefix(`'${name}' has failed`);
 
     return err;
   } else if (typeof err === "object") {
-    if (err instanceof (Gio.IOErrorEnum as any as typeof GioIOError)) {
-      const msg = err.message;
-      const stack = err.stack;
+    const msg = err.message as string | undefined;
+    const stack = err.stack as string | undefined;
 
-      err = new FsError(msg ?? "");
-      err.stack = stack;
+    const fsError = new FsError(msg ?? "Unknown Error");
+    fsError.setOriginFunctionName(name);
 
-      err.addMessagePrefix(`'${name}' has failed`);
-
-      return err;
-    } else if (err.stack) {
-      const stack = err.stack;
-      err = new FsError(
-        `'${name}' has failed due to an error.\n` + String(err)
-      );
-      err.stack = stack;
-
-      return err;
+    if (stack) {
+      fsError.stack = stack;
     }
+
+    return fsError;
   }
+
   return new FsError(
-    `'${name}' has failed due to an unknown error.\n` + String(err)
-  );
+    "Unknown Error (" + String(err) + ")"
+  ).setOriginFunctionName(name);
 };

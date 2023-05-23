@@ -1,16 +1,17 @@
 import GLib from "gi://GLib?version=2.0";
-import Gio from "gi://Gio?version=2.0";
+import type Gio from "gi://Gio?version=2.0";
 import { FsError } from "./errors";
+import type { FileCreateFlagOptions } from "./flags";
+import { getCreateFileFlag } from "./flags";
 import type { IOStreamType } from "./io-stream";
 import { OptionsResolver } from "./option-resolver";
-import { OptValidators } from "./option-validators";
 import { SyncFs, sync } from "./sync-fs";
+import { OptValidators, validateBytes, validateNumber } from "./validators";
 
-interface SyncIOStreamOptions {
+interface SyncIOStreamOptions extends FileCreateFlagOptions {
   cwd?: string;
-  fileCreateFlags?: Gio.FileCreateFlags;
   etag?: string;
-  make_backup?: boolean;
+  makeBackup?: boolean;
 }
 
 class SyncIOStream {
@@ -19,7 +20,7 @@ class SyncIOStream {
     type: IOStreamType,
     options?: SyncIOStreamOptions
   ) {
-    return sync("SyncIOStream.open", () => {
+    return sync("SyncIOStream.openFile", () => {
       const file = SyncFs.file(path, options?.cwd);
       const stream = new SyncIOStream(file, options);
 
@@ -85,24 +86,30 @@ class SyncIOStream {
     this._type = type;
 
     switch (type) {
-      case "CREATE":
-        this._stream = this.gioFile.create_readwrite(
-          opt.get("fileCreateFlags", Gio.FileCreateFlags.NONE),
-          null
-        );
-        break;
-      case "REPLACE":
+      case "CREATE": {
+        const createFlag = getCreateFileFlag(opt);
+
+        this._stream = this.gioFile.create_readwrite(createFlag, null);
+        return;
+      }
+      case "REPLACE": {
+        const createFlag = getCreateFileFlag(opt);
+
         this._stream = this.gioFile.replace_readwrite(
           opt.get("etag", null),
-          opt.get("make_backup", false),
-          opt.get("fileCreateFlags", Gio.FileCreateFlags.NONE),
+          opt.get("makeBackup", false),
+          createFlag,
           null
         );
-        break;
-      case "OPEN":
+        return;
+      }
+      case "OPEN": {
         this._stream = this.gioFile.open_readwrite(null);
-        break;
+        return;
+      }
     }
+
+    throw new FsError("Invalid IOStream type.");
   }
 
   private _ensureCanSeek() {
@@ -123,63 +130,100 @@ class SyncIOStream {
 
   public seek(offset: number) {
     this._ensureCanSeek();
+    validateNumber(offset);
 
-    this._stream!.seek(offset, GLib.SeekType.CUR, null);
+    const success = this._stream!.seek(offset, GLib.SeekType.CUR, null);
+
+    if (!success) {
+      throw new FsError("Failed to seek stream.");
+    }
   }
 
   public seekFromEnd(offset: number) {
     this._ensureCanSeek();
+    validateNumber(offset);
 
-    this._stream!.seek(offset, GLib.SeekType.END, null);
+    const success = this._stream!.seek(offset, GLib.SeekType.END, null);
+
+    if (!success) {
+      throw new FsError("Failed to seek stream.");
+    }
   }
 
   public seekFromStart(offset: number) {
     this._ensureCanSeek();
+    validateNumber(offset);
 
-    this._stream!.seek(offset, GLib.SeekType.SET, null);
+    const success = this._stream!.seek(offset, GLib.SeekType.SET, null);
+
+    if (!success) {
+      throw new FsError("Failed to seek stream.");
+    }
   }
 
   public skip(offset: number) {
-    this._stream!.input_stream.skip(offset, null);
+    validateNumber(offset);
+    const bytesSkipped = this._stream!.input_stream.skip(offset, null);
+
+    if (bytesSkipped === -1) {
+      throw new FsError("Failed to skip stream.");
+    }
+
+    return bytesSkipped;
   }
 
   public write(content: Uint8Array) {
+    validateBytes(content);
+
     if (content.byteLength === 0) {
       return;
     }
 
-    const bytesWritten = this._stream!.output_stream.write_bytes(
-      GLib.Bytes.new(content),
-      null
-    );
+    const bytes = GLib.Bytes.new(content);
+    const bytesWritten = this._stream!.output_stream.write_bytes(bytes, null);
 
     if (bytesWritten === -1) {
-      throw new FsError("Failed to append to stream.");
+      throw new FsError("Failed to write to stream.");
     }
+
+    return bytesWritten;
   }
 
   public read(byteCount: number) {
+    validateNumber(byteCount);
+
     const bytes = this._stream!.input_stream.read_bytes(byteCount, null);
+
+    if (bytes == null) {
+      throw new FsError("Failed to read from stream.");
+    }
+
     return bytes.unref_to_array();
   }
 
   public readAll(options?: { chunkSize?: number }) {
     const { chunkSize = 500000 } = options ?? {};
+    validateNumber(chunkSize);
+
     let result = new Uint8Array([]);
 
     while (true) {
-      const nextBytes = this._stream?.input_stream
-        .read_bytes(chunkSize, null)
-        .unref_to_array();
+      const nextBytes = this._stream?.input_stream.read_bytes(chunkSize, null);
 
-      if (nextBytes!.byteLength === 0) {
+      if (nextBytes == null) {
+        throw new FsError("Failed to read from stream.");
+      }
+
+      const byteArray = nextBytes.unref_to_array();
+
+      if (byteArray!.byteLength === 0) {
         break;
       } else {
         const newResult = new Uint8Array(
-          result.byteLength + nextBytes!.byteLength
+          result.byteLength + byteArray!.byteLength
         );
         newResult.set(result);
-        newResult.set(nextBytes!, result.byteLength);
+        newResult.set(byteArray!, result.byteLength);
         result = newResult;
       }
     }
@@ -189,8 +233,13 @@ class SyncIOStream {
 
   public truncate(length: number) {
     this._ensureCanTruncate();
+    validateNumber(length);
 
-    this._stream!.truncate(length, null);
+    const success = this._stream!.truncate(length, null);
+
+    if (!success) {
+      throw new FsError("Failed to truncate stream.");
+    }
   }
 
   public flush() {
@@ -203,7 +252,12 @@ class SyncIOStream {
 
   public close() {
     if (this._stream) {
-      this._stream.close(null);
+      const success = this._stream.close(null);
+
+      if (!success) {
+        throw new FsError("Failed to close stream.");
+      }
+
       this._state = "CLOSED";
     }
   }

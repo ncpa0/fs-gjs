@@ -1,22 +1,37 @@
 import { VALID_ENCODINGS } from "./encoding";
 import { InvalidOptionError } from "./errors";
 
-type LiteralToType<T extends "number" | "string" | "boolean" | "function"> = {
+type LiteralToType<
+  T extends "number" | "string" | "boolean" | "function" | "object"
+> = {
   number: number;
   string: string;
   boolean: boolean;
   function: Function;
+  object: object;
 }[T];
 
-function validateType<T extends "number" | "string" | "boolean" | "function">(
-  v: any,
-  name: string,
-  t: T
-): asserts v is LiteralToType<T> {
+// #region Option Validators
+
+function validateType<
+  T extends "number" | "string" | "boolean" | "function" | "object"
+>(v: any, name: string, t: T): asserts v is LiteralToType<T> {
   if (typeof v !== t) {
     throw new InvalidOptionError(name, t);
   }
 }
+
+const validateAbortSignal = (v: any) => {
+  if (typeof AbortSignal === "undefined") {
+    throw new Error("AbortSignal is not supported in this environment.");
+  }
+
+  validateType(v, "abortSignal", "object");
+
+  if (!(v instanceof AbortSignal)) {
+    throw new InvalidOptionError("abortSignal", "AbortSignal instance");
+  }
+};
 
 const validateAttributes = (v: any) => {
   if (!Array.isArray(v)) {
@@ -103,20 +118,45 @@ const validateReplace = (v: any) => {
 };
 
 export const OptValidators = new Map([
+  ["abortSignal", validateAbortSignal],
+  ["allMetadata", validateAllMetadata],
   ["attributes", validateAttributes],
-  ["followSymlinks", validateFollowSymlinks],
-  ["makeBackup", validateMakeBackup],
-  ["ioPriority", validateIoPriority],
-  ["recursive", validateRecursive],
+  ["batchSize", validateBatchSize],
   ["encoding", validateEncoding],
   ["etag", validateEtag],
-  ["onProgress", validateOnProgress],
-  ["trash", validateTrash],
-  ["batchSize", validateBatchSize],
-  ["overwrite", validateOverwrite],
-  ["allMetadata", validateAllMetadata],
+  ["followSymlinks", validateFollowSymlinks],
+  ["ioPriority", validateIoPriority],
+  ["makeBackup", validateMakeBackup],
   ["noFallbackForMove", validateNoFallbackForMove],
-  ["targetDefaultPermissions", validateTargetDefaultPermissions],
+  ["onProgress", validateOnProgress],
+  ["overwrite", validateOverwrite],
   ["private", validatePrivate],
+  ["recursive", validateRecursive],
   ["replace", validateReplace],
+  ["targetDefaultPermissions", validateTargetDefaultPermissions],
+  ["trash", validateTrash],
 ]);
+
+// #endregion
+
+// #region Other Validators
+
+export function validateBytes(v: any, name?: string): asserts v is Uint8Array {
+  if (!(v instanceof Uint8Array)) {
+    throw new TypeError("Expected a Uint8Array." + (name ? ` (${name})` : ""));
+  }
+}
+
+export function validateText(v: any, name?: string): asserts v is string {
+  if (typeof v !== "string") {
+    throw new TypeError("Expected a string." + (name ? ` (${name})` : ""));
+  }
+}
+
+export function validateNumber(v: any, name?: string): asserts v is number {
+  if (typeof v !== "number") {
+    throw new TypeError("Expected a number." + (name ? ` (${name})` : ""));
+  }
+}
+
+// #endregion

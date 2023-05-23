@@ -1,18 +1,19 @@
 import { Mutex } from "@ncpa0cpl/mutex.js";
 import GLib from "gi://GLib?version=2.0";
-import Gio from "gi://Gio?version=2.0";
+import type Gio from "gi://Gio?version=2.0";
 import { FsError } from "./errors";
+import type { FileCreateFlagOptions } from "./flags";
+import { getCreateFileFlag } from "./flags";
 import { Fs } from "./fs";
 import { OptionsResolver } from "./option-resolver";
-import { OptValidators } from "./option-validators";
 import { promise } from "./promise";
+import { OptValidators, validateBytes, validateNumber } from "./validators";
 
-interface IOStreamOptions {
+interface IOStreamOptions extends FileCreateFlagOptions {
   cwd?: string;
-  fileCreateFlags?: Gio.FileCreateFlags;
   ioPriority?: number;
   etag?: string;
-  make_backup?: boolean;
+  makeBackup?: boolean;
 }
 
 type IOStreamType = "OPEN" | "CREATE" | "REPLACE";
@@ -23,7 +24,7 @@ class IOStream {
     type: IOStreamType,
     options?: IOStreamOptions
   ) {
-    return promise<IOStream>("IOStream.open", null, async (p) => {
+    return promise<IOStream>("IOStream.openFile", null, async (p) => {
       const file = Fs.file(path, options?.cwd);
       const stream = new IOStream(file, options);
 
@@ -74,57 +75,78 @@ class IOStream {
     switch (type) {
       case "CREATE":
         this._stream = await promise<Gio.FileIOStream>(
-          "IOStream._init",
+          "IOStream._initFile",
           null,
           (p) => {
+            const createFlag = getCreateFileFlag(opt);
+
             this.gioFile.create_readwrite_async(
-              opt.get("fileCreateFlags", Gio.FileCreateFlags.NONE),
+              createFlag,
               opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
               null,
-              p.subCall((_, result: Gio.AsyncResult) => {
+              p.asyncCallback((_, result: Gio.AsyncResult) => {
                 const stream = this.gioFile.create_readwrite_finish(result);
-                p.resolve(stream);
+
+                if (!stream) {
+                  p.reject(new FsError("Failed to create a new stream."));
+                } else {
+                  p.resolve(stream);
+                }
               })
             );
           }
         );
-        break;
+        return;
       case "REPLACE":
         this._stream = await promise<Gio.FileIOStream>(
-          "IOStream._init",
+          "IOStream._initFile",
           null,
           (p) => {
+            const createFlag = getCreateFileFlag(opt);
+
             this.gioFile.replace_readwrite_async(
               opt.get("etag", null),
-              opt.get("make_backup", false),
-              opt.get("fileCreateFlags", Gio.FileCreateFlags.NONE),
+              opt.get("makeBackup", false),
+              createFlag,
               opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
               null,
-              p.subCall((_, result: Gio.AsyncResult) => {
+              p.asyncCallback((_, result: Gio.AsyncResult) => {
                 const stream = this.gioFile.replace_readwrite_finish(result);
-                p.resolve(stream);
+
+                if (!stream) {
+                  p.reject(new FsError("Failed to replace a new stream."));
+                } else {
+                  p.resolve(stream);
+                }
               })
             );
           }
         );
-        break;
+        return;
       case "OPEN":
         this._stream = await promise<Gio.FileIOStream>(
-          "IOStream._init",
+          "IOStream._initFile",
           null,
           (p) => {
             this.gioFile.open_readwrite_async(
               opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
               null,
-              p.subCall((_, result: Gio.AsyncResult) => {
+              p.asyncCallback((_, result: Gio.AsyncResult) => {
                 const stream = this.gioFile.open_readwrite_finish(result);
-                p.resolve(stream);
+
+                if (!stream) {
+                  p.reject(new FsError("Failed to open a new stream."));
+                } else {
+                  p.resolve(stream);
+                }
               })
             );
           }
         );
-        break;
+        return;
     }
+
+    throw new FsError("Invalid IOStream type.");
   }
 
   private _ensureCanSeek() {
@@ -140,186 +162,274 @@ class IOStream {
   }
 
   public async currentPosition() {
-    await this._mutex.acquire();
+    return await promise<number>(
+      "IOStream.currentPosition",
+      null,
+      async (p) => {
+        await this._mutex.acquire();
 
-    try {
-      return this._stream!.tell();
-    } finally {
-      this._mutex.release();
-    }
+        try {
+          return p.resolve(this._stream!.tell());
+        } finally {
+          this._mutex.release();
+        }
+      }
+    );
   }
 
   public async seek(offset: number) {
-    await this._mutex.acquire();
-    this._ensureCanSeek();
+    return await promise("IOStream.seek", null, async (p) => {
+      validateNumber(offset);
 
-    try {
-      this._stream!.seek(offset, GLib.SeekType.CUR, null);
-    } finally {
-      this._mutex.release();
-    }
+      await this._mutex.acquire();
+      this._ensureCanSeek();
+
+      try {
+        const success = this._stream!.seek(offset, GLib.SeekType.CUR, null);
+
+        if (!success) {
+          throw new FsError("Failed to seek stream.");
+        }
+      } finally {
+        this._mutex.release();
+      }
+
+      p.resolve();
+    });
   }
 
   public async seekFromEnd(offset: number) {
-    await this._mutex.acquire();
-    this._ensureCanSeek();
+    return await promise("IOStream.seek", null, async (p) => {
+      validateNumber(offset);
 
-    try {
-      this._stream!.seek(offset, GLib.SeekType.END, null);
-    } finally {
-      this._mutex.release();
-    }
+      await this._mutex.acquire();
+      this._ensureCanSeek();
+
+      try {
+        const success = this._stream!.seek(offset, GLib.SeekType.END, null);
+
+        if (!success) {
+          throw new FsError("Failed to seek stream.");
+        }
+      } finally {
+        this._mutex.release();
+      }
+
+      p.resolve();
+    });
   }
 
   public async seekFromStart(offset: number) {
-    await this._mutex.acquire();
-    this._ensureCanSeek();
+    return await promise("IOStream.seek", null, async (p) => {
+      validateNumber(offset);
 
-    try {
-      this._stream!.seek(offset, GLib.SeekType.SET, null);
-    } finally {
-      this._mutex.release();
-    }
+      await this._mutex.acquire();
+      this._ensureCanSeek();
+
+      try {
+        const success = this._stream!.seek(offset, GLib.SeekType.SET, null);
+
+        if (!success) {
+          throw new FsError("Failed to seek stream.");
+        }
+      } finally {
+        this._mutex.release();
+      }
+
+      p.resolve();
+    });
   }
 
   public async skip(offset: number) {
-    await this._mutex.acquire();
+    return await promise<number>("IOStream.skip", null, async (p) => {
+      validateNumber(offset);
 
-    try {
-      return await promise<number>("IOStream.skip", null, (p) => {
-        this._stream!.input_stream.skip_async(
-          offset,
-          this._options.get("ioPriority", GLib.PRIORITY_DEFAULT),
-          null,
-          (_, result: Gio.AsyncResult) => {
-            const bytesSkipped = this._stream!.input_stream.skip_finish(result);
-            if (bytesSkipped === -1) {
-              p.reject(new FsError("Failed to skip bytes."));
-            } else {
-              p.resolve(bytesSkipped);
-            }
-          }
-        );
-      });
-    } finally {
-      this._mutex.release();
-    }
+      await this._mutex.acquire();
+
+      let bytesSkipped;
+
+      try {
+        bytesSkipped = await promise<number>("IOStream.skip", null, (p2) => {
+          this._stream!.input_stream.skip_async(
+            offset,
+            this._options.get("ioPriority", GLib.PRIORITY_DEFAULT),
+            null,
+            p2.asyncCallback((_, result: Gio.AsyncResult) => {
+              const bytesSkipped =
+                this._stream!.input_stream.skip_finish(result);
+
+              if (bytesSkipped === -1) {
+                p2.reject(new FsError("Failed to skip bytes."));
+              } else {
+                p2.resolve(bytesSkipped);
+              }
+            })
+          );
+        });
+      } finally {
+        this._mutex.release();
+      }
+
+      p.resolve(bytesSkipped);
+    });
   }
 
   public async write(content: Uint8Array) {
-    await this._mutex.acquire();
+    return await promise<number>("IOStream.write", null, async (p) => {
+      validateBytes(content);
 
-    if (content.byteLength === 0) {
-      return;
-    }
+      if (content.byteLength === 0) {
+        return p.resolve(0); // Nothing to write.
+      }
 
-    try {
-      const opt = this._options;
+      await this._mutex.acquire();
 
-      return await promise("IOStream.write", null, (p) => {
-        const bytes = GLib.Bytes.new(content);
-        this._stream!.output_stream.write_bytes_async(
-          bytes,
-          opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-          null,
-          p.subCall((_, result: Gio.AsyncResult) => {
-            const bytesWritten =
-              this._stream!.output_stream.write_bytes_finish(result);
+      let bytesWritten: number;
 
-            if (bytesWritten === -1) {
-              p.reject(new FsError("Failed to write to stream."));
-            } else {
-              p.resolve();
-            }
-          })
-        );
-      });
-    } finally {
-      this._mutex.release();
-    }
+      try {
+        const opt = this._options;
+
+        bytesWritten = await promise<number>("IOStream.write", null, (p2) => {
+          const bytes = GLib.Bytes.new(content);
+          this._stream!.output_stream.write_bytes_async(
+            bytes,
+            opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+            null,
+            p2.asyncCallback((_, result: Gio.AsyncResult) => {
+              const bytesWritten =
+                this._stream!.output_stream.write_bytes_finish(result);
+
+              if (bytesWritten === -1) {
+                p2.reject(new FsError("Failed to write to stream."));
+              } else {
+                p2.resolve(bytesWritten);
+              }
+            })
+          );
+        });
+      } finally {
+        this._mutex.release();
+      }
+
+      p.resolve(bytesWritten);
+    });
   }
 
   public async read(byteCount: number) {
-    await this._mutex.acquire();
+    return await promise<Uint8Array>("IOStream.read", null, async (p) => {
+      validateNumber(byteCount);
 
-    try {
-      const opt = this._options;
+      await this._mutex.acquire();
 
-      return await promise<Uint8Array>("IOStream.read", null, (p) => {
-        this._stream!.input_stream.read_bytes_async(
-          byteCount,
-          opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-          null,
-          p.subCall((_, result: Gio.AsyncResult) => {
-            const bytes = this._stream!.input_stream.read_bytes_finish(result);
-            const bytesArray = bytes.unref_to_array();
-            p.resolve(bytesArray);
-          })
-        );
-      });
-    } finally {
-      this._mutex.release();
-    }
+      let bytes: Uint8Array;
+
+      try {
+        const opt = this._options;
+
+        bytes = await promise<Uint8Array>("IOStream.read", null, (p2) => {
+          this._stream!.input_stream.read_bytes_async(
+            byteCount,
+            opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+            null,
+            p2.asyncCallback((_, result: Gio.AsyncResult) => {
+              const bytes =
+                this._stream!.input_stream.read_bytes_finish(result);
+
+              if (bytes != null) {
+                p2.resolve(bytes.unref_to_array());
+              } else {
+                p2.reject(new FsError("Failed to read from stream."));
+              }
+            })
+          );
+        });
+      } finally {
+        this._mutex.release();
+      }
+
+      p.resolve(bytes);
+    });
   }
 
   public async readAll(options?: { chunkSize?: number }) {
-    await this._mutex.acquire();
+    return await promise<Uint8Array>("IOStream.read", null, async (p) => {
+      const { chunkSize = 500000 } = options ?? {};
+      validateNumber(chunkSize);
 
-    try {
-      const opt = this._options;
+      await this._mutex.acquire();
 
-      return await promise<Uint8Array>("IOStream.read", null, async (p) => {
-        const { chunkSize = 500000 } = options ?? {};
-        let result = new Uint8Array([]);
+      let bytes: Uint8Array;
 
-        while (true) {
-          const nextBytes = await promise<Uint8Array>(
-            "IOStream.read",
-            null,
-            (p2) => {
-              this._stream!.input_stream.read_bytes_async(
-                chunkSize,
-                opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-                null,
-                p2.subCall((_, result: Gio.AsyncResult) => {
-                  const bytes =
-                    this._stream!.input_stream.read_bytes_finish(result);
-                  const bytesArray = bytes.unref_to_array();
-                  p2.resolve(bytesArray);
-                })
-              );
-            }
-          );
+      try {
+        const opt = this._options;
 
-          if (nextBytes.byteLength === 0) {
-            break;
-          } else {
-            const newResult = new Uint8Array(
-              result.byteLength + nextBytes.byteLength
+        bytes = await promise<Uint8Array>("IOStream.read", null, async (p2) => {
+          let result = new Uint8Array([]);
+
+          while (true) {
+            const nextBytes = await promise<Uint8Array>(
+              "IOStream.read",
+              null,
+              (p3) => {
+                this._stream!.input_stream.read_bytes_async(
+                  chunkSize,
+                  opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+                  null,
+                  p3.asyncCallback((_, result: Gio.AsyncResult) => {
+                    const bytes =
+                      this._stream!.input_stream.read_bytes_finish(result);
+
+                    if (bytes != null) {
+                      p3.resolve(bytes.unref_to_array());
+                    } else {
+                      p3.reject(new FsError("Failed to read from stream."));
+                    }
+                  })
+                );
+              }
             );
-            newResult.set(result);
-            newResult.set(nextBytes, result.byteLength);
-            result = newResult;
-          }
-        }
 
-        p.resolve(result);
-      });
-    } finally {
-      this._mutex.release();
-    }
+            if (nextBytes.byteLength === 0) {
+              break;
+            } else {
+              const newResult = new Uint8Array(
+                result.byteLength + nextBytes.byteLength
+              );
+              newResult.set(result);
+              newResult.set(nextBytes, result.byteLength);
+              result = newResult;
+            }
+          }
+
+          p2.resolve(result);
+        });
+      } finally {
+        this._mutex.release();
+      }
+
+      p.resolve(bytes);
+    });
   }
 
   public async truncate(length: number) {
-    this._ensureCanTruncate();
+    return await promise("IOStream.truncate", null, async (p) => {
+      this._ensureCanTruncate();
+      validateNumber(length);
 
-    await this._mutex.acquire();
+      await this._mutex.acquire();
 
-    try {
-      this._stream!.truncate(length, null);
-    } finally {
-      this._mutex.release();
-    }
+      try {
+        const success = this._stream!.truncate(length, null);
+
+        if (!success) {
+          throw new FsError("Failed to truncate stream.");
+        }
+      } finally {
+        this._mutex.release();
+      }
+
+      p.resolve();
+    });
   }
 
   /**
@@ -333,53 +443,31 @@ class IOStream {
    *   await stream.finishPending(); // Waits for all above writes to finish.
    */
   public async finishPending() {
-    await this._mutex.acquire();
-    this._mutex.release();
+    return await promise("IOStream.finishPending", null, async (p) => {
+      await this._mutex.acquire();
+      this._mutex.release();
+      p.resolve();
+    });
   }
 
   public async flush() {
-    await this._mutex.acquire();
-
-    try {
-      const opt = this._options;
-
-      return await promise("IOStream.flush", null, (p) => {
-        this._stream!.output_stream.flush_async(
-          opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-          null,
-          p.subCall((_, result: Gio.AsyncResult) => {
-            const success = this._stream!.output_stream.flush_finish(result);
-            if (success) {
-              p.resolve();
-            } else {
-              p.reject(new FsError("Failed to flush stream."));
-            }
-          })
-        );
-      });
-    } finally {
-      this._mutex.release();
-    }
-  }
-
-  public async close() {
-    if (this._stream) {
-      const opt = this._options;
-
+    return await promise("IOStream.flush", null, async (p) => {
       await this._mutex.acquire();
 
       try {
-        return await promise("IOStream.close", null, (p) => {
-          this._stream!.close_async(
+        const opt = this._options;
+
+        await promise("IOStream.flush", null, (p) => {
+          this._stream!.output_stream.flush_async(
             opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
             null,
-            p.subCall((_, result: Gio.AsyncResult) => {
-              const success = this._stream!.close_finish(result);
+            p.asyncCallback((_, result: Gio.AsyncResult) => {
+              const success = this._stream!.output_stream.flush_finish(result);
+
               if (success) {
-                this._state = "CLOSED";
                 p.resolve();
               } else {
-                p.reject(new FsError("Failed to close stream."));
+                p.reject(new FsError("Failed to flush stream."));
               }
             })
           );
@@ -387,6 +475,41 @@ class IOStream {
       } finally {
         this._mutex.release();
       }
+
+      p.resolve();
+    });
+  }
+
+  public async close() {
+    if (this._stream) {
+      return await promise("IOStream.close", null, async (p) => {
+        const opt = this._options;
+
+        await this._mutex.acquire();
+
+        try {
+          await promise("IOStream.close", null, (p2) => {
+            this._stream!.close_async(
+              opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+              null,
+              p2.asyncCallback((_, result: Gio.AsyncResult) => {
+                const success = this._stream!.close_finish(result);
+
+                if (success) {
+                  this._state = "CLOSED";
+                  p2.resolve();
+                } else {
+                  p2.reject(new FsError("Failed to close stream."));
+                }
+              })
+            );
+          });
+        } finally {
+          this._mutex.release();
+        }
+
+        p.resolve();
+      });
     }
   }
 }

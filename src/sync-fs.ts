@@ -11,13 +11,18 @@ import type {
 import { getCopyFileFlag, getCreateFileFlag, getQueryFileFlag } from "./flags";
 import type { IOStreamOptions, IOStreamType } from "./io-stream";
 import { OptionsResolver } from "./option-resolver";
-import { OptValidators } from "./option-validators";
 import { parseFsError } from "./parse-fs-error";
 import { isAbsolute, join } from "./path";
 import type { FilePermission } from "./permission-parser";
 import { parseFilePermission } from "./permission-parser";
 import type { SyncIOStreamOptions } from "./sync-io-stream";
 import { SyncIOStream } from "./sync-io-stream";
+import {
+  OptValidators,
+  validateBytes,
+  validateNumber,
+  validateText,
+} from "./validators";
 
 type Tail<T extends any[]> = T extends [any, ...infer U] ? U : [];
 
@@ -299,30 +304,31 @@ class SyncFs {
     this._cwd = options?.cwd ?? null;
 
     this.resolvePath = sync("resolvePath", this.resolvePath.bind(this));
+    this.file = sync("file", this.file.bind(this));
     this.fileExists = sync("fileExists", this.fileExists.bind(this));
-    this.openFileIOStream = sync(
-      "openIOStream",
-      this.openFileIOStream.bind(this)
-    );
-    this.deleteFile = sync("deleteFile", this.deleteFile.bind(this));
-    this.moveFile = sync("moveFile", this.moveFile.bind(this));
-    this.renameFile = sync("renameFile", this.renameFile.bind(this));
-    this.copyFile = sync("copyFile", this.copyFile.bind(this));
-    this.writeFile = sync("writeFile", this.writeFile.bind(this));
-    this.writeTextFile = sync("writeTextFile", this.writeTextFile.bind(this));
+    this.listDir = sync("listDir", this.listDir.bind(this));
+    this.listFilenames = sync("listFilenames", this.listFilenames.bind(this));
+    this.fileInfo = sync("fileInfo", this.fileInfo.bind(this));
     this.readFile = sync("readFile", this.readFile.bind(this));
     this.readTextFile = sync("readTextFile", this.readTextFile.bind(this));
-    this.listDir = sync("listDir", this.listDir.bind(this));
-    this.fileInfo = sync("fileInfo", this.fileInfo.bind(this));
-    this.file = sync("file", this.file.bind(this));
-    this.makeDir = sync("makeDir", this.makeDir.bind(this));
-    this.makeLink = sync("makeLink", this.makeLink.bind(this));
-    this.chmod = sync("chmod", this.chmod.bind(this));
-    this.chown = sync("chown", this.chown.bind(this));
+    this.writeFile = sync("writeFile", this.writeFile.bind(this));
+    this.writeTextFile = sync("writeTextFile", this.writeTextFile.bind(this));
     this.appendFile = sync("appendFile", this.appendFile.bind(this));
     this.appendTextFile = sync(
       "appendTextFile",
       this.appendTextFile.bind(this)
+    );
+    this.moveFile = sync("moveFile", this.moveFile.bind(this));
+    this.renameFile = sync("renameFile", this.renameFile.bind(this));
+    this.copyFile = sync("copyFile", this.copyFile.bind(this));
+    this.deleteFile = sync("deleteFile", this.deleteFile.bind(this));
+    this.makeDir = sync("makeDir", this.makeDir.bind(this));
+    this.makeLink = sync("makeLink", this.makeLink.bind(this));
+    this.chmod = sync("chmod", this.chmod.bind(this));
+    this.chown = sync("chown", this.chown.bind(this));
+    this.openFileIOStream = sync(
+      "openIOStream",
+      this.openFileIOStream.bind(this)
     );
   }
 
@@ -435,10 +441,10 @@ class SyncFs {
   public readFile(path: string) {
     const file = this.file(path);
 
-    const [success, contents] = file.load_contents(null);
+    const [bytes] = file.load_bytes(null);
 
-    if (success) {
-      return contents;
+    if (bytes != null) {
+      return bytes.unref_to_array();
     } else {
       throw new FsError(`Failed to read file: ${file.get_path()}`);
     }
@@ -451,10 +457,10 @@ class SyncFs {
    */
   public readTextFile(path: string, options?: SyncReadTextFileOptions) {
     const opt = OptionsResolver(options, OptValidators);
+    const decoder = new TextDecoder(opt.get("encoding", "utf-8"));
 
     const contents = this.readFile(path);
 
-    const decoder = new TextDecoder(opt.get("encoding", "utf-8"));
     return decoder.decode(contents);
   }
 
@@ -464,6 +470,8 @@ class SyncFs {
     contents: Uint8Array,
     options?: SyncWriteFileOptions
   ) {
+    validateBytes(contents);
+
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
     const createFlag = getCreateFileFlag(opt);
@@ -476,18 +484,18 @@ class SyncFs {
         null
       );
 
+      let closeSuccess: boolean;
+
       try {
         stream.truncate(0, null);
       } finally {
-        const success = stream.close(null);
+        closeSuccess = stream.close(null);
+      }
 
-        if (success) {
-          // eslint-disable-next-line no-unsafe-finally
-          return;
-        } else {
-          // eslint-disable-next-line no-unsafe-finally
-          throw new FsError(`Failed to write file: ${file.get_path()}`);
-        }
+      if (closeSuccess) {
+        return;
+      } else {
+        throw new FsError(`Failed to close file stream: ${file.get_path()}`);
       }
     } else {
       const [success] = file.replace_contents(
@@ -516,6 +524,8 @@ class SyncFs {
     contents: string,
     options?: SyncWriteTextFileOptions
   ) {
+    validateText(contents);
+
     const encoder = new TextEncoder();
 
     const data = encoder.encode(contents);
@@ -529,23 +539,31 @@ class SyncFs {
     contents: Uint8Array,
     options?: SyncAppendFileOptions
   ) {
+    validateBytes(contents);
+
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
     const createFlag = getCreateFileFlag(opt);
 
     const stream = file.append_to(createFlag, null);
 
-    const bytes = GLib.Bytes.new(contents);
-    const bytesWritten = stream.write_bytes(bytes, null);
+    let closeSuccess: boolean;
 
-    if (bytesWritten === -1) {
-      throw new FsError(`Failed to append file: ${file.get_path()}`);
+    try {
+      const bytes = GLib.Bytes.new(contents);
+      const bytesWritten = stream.write_bytes(bytes, null);
+
+      if (bytesWritten === -1) {
+        throw new FsError(`Failed to append file: ${file.get_path()}`);
+      }
+    } finally {
+      closeSuccess = stream.close(null);
     }
 
-    const success = stream.close(null);
-
-    if (!success) {
-      throw new FsError("Failed to close stream.");
+    if (closeSuccess) {
+      return;
+    } else {
+      throw new FsError(`Failed to close file stream: ${file.get_path()}`);
     }
   }
 
@@ -559,6 +577,8 @@ class SyncFs {
     contents: string,
     options?: SyncAppendTextFileOptions
   ) {
+    validateText(contents);
+
     const encoder = new TextEncoder();
 
     const data = encoder.encode(contents);
@@ -650,10 +670,10 @@ class SyncFs {
     }
 
     if (opt.get("recursive", false) && this.fileInfo(path).isDirectory) {
-      const files = this.listDir(path, options);
+      const files = this.listFilenames(path, options);
 
-      for (const f of files) {
-        this.deleteFile(f.filepath, options);
+      for (const filename of files) {
+        this.deleteFile(join(path, filename), options);
       }
     }
 
@@ -717,12 +737,10 @@ class SyncFs {
     const opt = OptionsResolver(options, OptValidators);
     const queryFlag = getQueryFileFlag(opt);
 
-    const success = file.set_attribute_uint32(
-      "unix::mode",
-      parseFilePermission(mode),
-      queryFlag,
-      null
-    );
+    const info = Gio.FileInfo.new();
+    info.set_attribute_uint32("unix::mode", parseFilePermission(mode));
+
+    const success = file.set_attributes_from_info(info, queryFlag, null);
 
     if (success) {
       return;
@@ -740,30 +758,21 @@ class SyncFs {
     gid: number,
     options?: SyncChownOptions
   ) {
+    validateNumber(uid, "uid");
+    validateNumber(gid, "gid");
+
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
     const queryFlag = getQueryFileFlag(opt);
 
-    const success = file.set_attribute_uint32(
-      "unix::uid",
-      uid,
-      queryFlag,
-      null
-    );
+    const info = Gio.FileInfo.new();
+    info.set_attribute_uint32("unix::uid", uid);
+    info.set_attribute_uint32("unix::gid", gid);
+
+    const success = file.set_attributes_from_info(info, queryFlag, null);
 
     if (!success) {
       throw new FsError(`Failed to change file owner: ${file.get_path()}`);
-    }
-
-    const success2 = file.set_attribute_uint32(
-      "unix::gid",
-      gid,
-      queryFlag,
-      null
-    );
-
-    if (!success2) {
-      throw new FsError(`Failed to change file group: ${file.get_path()}`);
     }
   }
 
