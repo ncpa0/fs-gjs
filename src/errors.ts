@@ -25,6 +25,6 @@ export class FsError extends Error {
 
 export class InvalidOptionError extends TypeError {
   constructor(public name: string, public expectedType: any) {
-    super(`Invalid option: '${name}' - Expected a [${expectedType}].`);
+    super(`Invalid option '${name}' - Expected a [${expectedType}].`);
   }
 }

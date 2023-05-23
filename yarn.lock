@@ -209,10 +209,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@reactgjs/gest@^0.3.1":
-  version "0.3.1"
-  resolved "https://registry.yarnpkg.com/@reactgjs/gest/-/gest-0.3.1.tgz#e21f53fc7c1de401cda7161a4de56681d801bc5d"
-  integrity sha512-ieaDjiQ02tGWuYla2ygiRS2DY/mw3JfYH4l8BLYhx6/UwJLb4+V3nTyl3E3GxK+HSwiFyZO08gvjvcK4ECRnFg==
+"@reactgjs/gest@^0.3.2":
+  version "0.3.2"
+  resolved "https://registry.yarnpkg.com/@reactgjs/gest/-/gest-0.3.2.tgz#15bdb1b4d521fb06623fb1ef653a6451e8c5f711"
+  integrity sha512-q/L5OcFHyQ1LdRLr702dL4pPkxcHfC1LQ+cqV4fvVU/yqkjsL3lCVcDjHC14/3dK8pAENRpD09bXi/ZwRi2DWQ==
   dependencies:
     esbuild "^0.17.17"
 

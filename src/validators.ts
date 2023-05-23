@@ -143,19 +143,21 @@ export const OptValidators = new Map([
 
 export function validateBytes(v: any, name?: string): asserts v is Uint8Array {
   if (!(v instanceof Uint8Array)) {
-    throw new TypeError("Expected a Uint8Array." + (name ? ` (${name})` : ""));
+    throw new TypeError(
+      "Expected a [Uint8Array]." + (name ? ` (${name})` : "")
+    );
   }
 }
 
 export function validateText(v: any, name?: string): asserts v is string {
   if (typeof v !== "string") {
-    throw new TypeError("Expected a string." + (name ? ` (${name})` : ""));
+    throw new TypeError("Expected a [string]." + (name ? ` (${name})` : ""));
   }
 }
 
 export function validateNumber(v: any, name?: string): asserts v is number {
   if (typeof v !== "number") {
-    throw new TypeError("Expected a number." + (name ? ` (${name})` : ""));
+    throw new TypeError("Expected a [number]." + (name ? ` (${name})` : ""));
   }
 }
 

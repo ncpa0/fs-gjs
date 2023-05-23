@@ -590,10 +590,17 @@ class Fs {
   public readTextFile(path: string, options?: ReadTextFileOptions) {
     const opt = OptionsResolver(options, OptValidators);
 
-    return this.readFile(path, options).then((contents) => {
-      const decoder = new TextDecoder(opt.get("encoding", "utf-8"));
-      return decoder.decode(contents);
-    });
+    return promise<string>(
+      "readTextFile",
+      opt.get("abortSignal"),
+      async (p) => {
+        const decoder = new TextDecoder(opt.get("encoding", "utf-8"));
+
+        const contents = await this.readFile(path, options);
+
+        p.resolve(decoder.decode(contents));
+      }
+    );
   }
 
   /** Writes the given data to a file under the given path. */
@@ -1128,4 +1135,3 @@ export type {
   ChmodOptions,
   ChownOptions,
 };
-

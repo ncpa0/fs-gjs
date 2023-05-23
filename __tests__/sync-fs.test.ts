@@ -8,7 +8,7 @@ import {
   match,
 } from "@reactgjs/gest";
 import GLib from "gi://GLib?version=2.0";
-import { Fs, SyncFs, SyncIOStream } from "../src/index";
+import { Fs, FsError, SyncFs, SyncIOStream } from "../src/index";
 
 const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
 Praesent quis turpis pharetra, lobortis felis vitae, lacinia magna.
@@ -37,6 +37,20 @@ let _i = 1;
 const getNextTestFile = () => `test${_i++}`;
 
 const TMP_DIR_PATH = GLib.get_current_dir() + "/__tests__/sync-fs-test-tmp";
+
+const matchFsError = (message: any) => {
+  return match.allOf(
+    {
+      message,
+      stack: match.type("string"),
+    },
+    match.instanceOf(FsError)
+  );
+};
+
+const matchMessageContaining = (...str: string[]) => {
+  return match.allOf(...str.map((r) => match.stringContaining(r)));
+};
 
 export default describe("Fs", () => {
   let testFile = "";
@@ -539,123 +553,295 @@ export default describe("Fs", () => {
   });
 
   describe("negative scenarios", () => {
-    describe("listDir", () => {
-      it("should fail when invalid option given: 'followSymlinks'", () => {
-        expect(() => fs.listDir(".", { followSymlinks: 1 as any })).toThrow();
+    describe("invalid options", () => {
+      describe("listDir", () => {
+        it("should fail when invalid option given: 'followSymlinks'", () => {
+          expect(() => fs.listDir(".", { followSymlinks: 1 as any })).toThrow();
+        });
+
+        it("should fail when invalid option given: 'attributes'", () => {
+          expect(() => fs.listDir(".", { attributes: 1 as any })).toThrow();
+        });
       });
 
-      it("should fail when invalid option given: 'attributes'", () => {
-        expect(() => fs.listDir(".", { attributes: 1 as any })).toThrow();
+      describe("fileInfo", () => {
+        it("should fail when invalid option given: 'followSymlinks'", () => {
+          expect(() =>
+            fs.fileInfo(".", { followSymlinks: 1 as any })
+          ).toThrow();
+        });
+
+        it("should fail when invalid option given: 'attributes'", () => {
+          expect(() => fs.fileInfo(".", { attributes: 1 as any })).toThrow();
+          expect(() => fs.fileInfo(".", { attributes: "*" as any })).toThrow();
+        });
+      });
+
+      describe("readTextFile", () => {
+        it("should fail when invalid option given: 'encoding'", () => {
+          expect(() => fs.readTextFile(".", { encoding: 1 as any })).toThrow();
+          expect(() =>
+            fs.readTextFile(".", { encoding: "lul" as any })
+          ).toThrow();
+        });
+      });
+
+      describe("writeFile", () => {
+        it("should fail when invalid content argument", () => {
+          expect(() => fs.writeFile(testFile, "123" as any)).toThrowMatch(
+            matchFsError(
+              "'writeFile' failed with error: Expected a [Uint8Array]."
+            )
+          );
+        });
+      });
+
+      describe("writeTextFile", () => {
+        it("should fail when invalid option given: 'etag'", () => {
+          expect(() =>
+            fs.writeTextFile(testFile, loremIpsum, { etag: 3 as any })
+          ).toThrow();
+        });
+
+        it("should fail when invalid option given: 'makeBackup'", () => {
+          expect(() =>
+            fs.writeTextFile(testFile, loremIpsum, { makeBackup: "yes" as any })
+          ).toThrow();
+        });
+
+        it("should fail when invalid option given: 'private'", () => {
+          expect(() =>
+            fs.writeTextFile(testFile, loremIpsum, { private: 1 as any })
+          ).toThrow();
+        });
+
+        it("should fail when invalid option given: 'replace'", () => {
+          expect(() =>
+            fs.writeTextFile(testFile, loremIpsum, { replace: {} as any })
+          ).toThrow();
+        });
+
+        it("should fail when invalid content argument", () => {
+          expect(() => fs.writeTextFile(testFile, 123 as any)).toThrowMatch(
+            matchFsError(
+              "'writeTextFile' failed with error: Expected a [string]."
+            )
+          );
+        });
+      });
+
+      describe("appendFile", () => {
+        it("should fail when invalid content argument", () => {
+          expect(() => fs.appendFile(testFile, "123" as any)).toThrowMatch(
+            matchFsError(
+              "'appendFile' failed with error: Expected a [Uint8Array]."
+            )
+          );
+        });
+      });
+
+      describe("appendTextFile", () => {
+        it("should fail when invalid content argument", () => {
+          expect(() => fs.appendTextFile(testFile, 123 as any)).toThrowMatch(
+            matchFsError(
+              "'appendTextFile' failed with error: Expected a [string]."
+            )
+          );
+        });
+      });
+
+      describe("moveFile", () => {
+        it("should fail when invalid option given: 'onProgress'", () => {
+          expect(() =>
+            fs.moveFile(testFile, testFile + "-ov", {
+              onProgress: {} as any,
+            })
+          ).toThrow();
+        });
+
+        it("should fail when invalid option given: 'allMetadata'", () => {
+          expect(() =>
+            fs.moveFile(testFile, testFile + "-ov", {
+              allMetadata: [] as any,
+            })
+          ).toThrow();
+        });
+
+        it("should fail when invalid option given: 'makeBackup'", () => {
+          expect(() =>
+            fs.moveFile(testFile, testFile + "-ov", {
+              makeBackup: 0 as any,
+            })
+          ).toThrow();
+        });
+
+        it("should fail when invalid option given: 'noFallbackForMove'", () => {
+          expect(() =>
+            fs.moveFile(testFile, testFile + "-ov", {
+              noFallbackForMove: (() => {}) as any,
+            })
+          ).toThrow();
+        });
+
+        it("should fail when invalid option given: 'overwrite'", () => {
+          expect(() =>
+            fs.moveFile(testFile, testFile + "-ov", {
+              overwrite: "123" as any,
+            })
+          ).toThrow();
+        });
+
+        it("should fail when invalid option given: 'targetDefaultPermissions'", () => {
+          expect(() =>
+            fs.moveFile(testFile, testFile + "-ov", {
+              targetDefaultPermissions: 1 as any,
+            })
+          ).toThrow();
+        });
+      });
+
+      describe("deleteFile", () => {
+        it("should fail when invalid option given: 'recursive'", () => {
+          expect(() =>
+            fs.deleteFile(testFile, { recursive: "yes" as any })
+          ).toThrow();
+        });
+
+        it("should fail when invalid option given: 'trash'", () => {
+          expect(() =>
+            fs.deleteFile(testFile, { trash: "~/trashbin" as any })
+          ).toThrow();
+        });
+      });
+
+      describe("chown", () => {
+        it("should fail when invalid uid argument", () => {
+          expect(() => fs.chown(testFile, "1000" as any, 1000)).toThrowMatch(
+            matchFsError(
+              "'chown' failed with error: Expected a [number]. (uid)"
+            )
+          );
+        });
+
+        it("should fail when invalid gid argument", () => {
+          expect(() => fs.chown(testFile, 1000, "1000" as any)).toThrowMatch(
+            matchFsError(
+              "'chown' failed with error: Expected a [number]. (gid)"
+            )
+          );
+        });
       });
     });
 
-    describe("fileInfo", () => {
-      it("should fail when invalid option given: 'followSymlinks'", () => {
-        expect(() => fs.fileInfo(".", { followSymlinks: 1 as any })).toThrow();
+    describe("file doesn't exist", () => {
+      it("listDir", () => {
+        expect(() => fs.listDir(testFile)).toThrowMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'listDir' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'attributes'", () => {
-        expect(() => fs.fileInfo(".", { attributes: 1 as any })).toThrow();
-        expect(() => fs.fileInfo(".", { attributes: "*" as any })).toThrow();
-      });
-    });
-
-    describe("readTextFile", () => {
-      it("should fail when invalid option given: 'encoding'", () => {
-        expect(() => fs.readTextFile(".", { encoding: 1 as any })).toThrow();
-        expect(() =>
-          fs.readTextFile(".", { encoding: "lul" as any })
-        ).toThrow();
-      });
-    });
-
-    describe("writeTextFile", () => {
-      it("should fail when invalid option given: 'etag'", () => {
-        expect(() =>
-          fs.writeTextFile(testFile, loremIpsum, { etag: 3 as any })
-        ).toThrow();
+      it("listFilenames", () => {
+        expect(() => fs.listFilenames(testFile)).toThrowMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'listFilenames' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'makeBackup'", () => {
-        expect(() =>
-          fs.writeTextFile(testFile, loremIpsum, { makeBackup: "yes" as any })
-        ).toThrow();
+      it("fileInfo", () => {
+        expect(() => fs.fileInfo(testFile)).toThrowMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'fileInfo' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'private'", () => {
-        expect(() =>
-          fs.writeTextFile(testFile, loremIpsum, { private: 1 as any })
-        ).toThrow();
+      it("readFile", () => {
+        expect(() => fs.readFile(testFile)).toThrowMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'readFile' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'replace'", () => {
-        expect(() =>
-          fs.writeTextFile(testFile, loremIpsum, { replace: {} as any })
-        ).toThrow();
-      });
-    });
-
-    describe("moveFile", () => {
-      it("should fail when invalid option given: 'onProgress'", () => {
-        expect(() =>
-          fs.moveFile(testFile, testFile + "-ov", {
-            onProgress: {} as any,
-          })
-        ).toThrow();
+      it("readTextFile", () => {
+        expect(() => fs.readTextFile(testFile)).toThrowMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'readTextFile' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'allMetadata'", () => {
-        expect(() =>
-          fs.moveFile(testFile, testFile + "-ov", {
-            allMetadata: [] as any,
-          })
-        ).toThrow();
+      it("moveFile", () => {
+        expect(() => fs.moveFile(testFile, testFile + "-ov")).toThrowMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'moveFile' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'makeBackup'", () => {
-        expect(() =>
-          fs.moveFile(testFile, testFile + "-ov", {
-            makeBackup: 0 as any,
-          })
-        ).toThrow();
+      it("copyFile", () => {
+        expect(() => fs.copyFile(testFile, testFile + "-ov")).toThrowMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'copyFile' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'noFallbackForMove'", () => {
-        expect(() =>
-          fs.moveFile(testFile, testFile + "-ov", {
-            noFallbackForMove: (() => {}) as any,
-          })
-        ).toThrow();
+      it("deleteFile", () => {
+        expect(() => fs.deleteFile(testFile)).toThrowMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'deleteFile' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'overwrite'", () => {
-        expect(() =>
-          fs.moveFile(testFile, testFile + "-ov", {
-            overwrite: "123" as any,
-          })
-        ).toThrow();
+      it("chmod", () => {
+        expect(() => fs.chmod(testFile, "rwxrwxrwx")).toThrowMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'chmod' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'targetDefaultPermissions'", () => {
-        expect(() =>
-          fs.moveFile(testFile, testFile + "-ov", {
-            targetDefaultPermissions: 1 as any,
-          })
-        ).toThrow();
-      });
-    });
-
-    describe("deleteFile", () => {
-      it("should fail when invalid option given: 'recursive'", () => {
-        expect(() =>
-          fs.deleteFile(testFile, { recursive: "yes" as any })
-        ).toThrow();
-      });
-
-      it("should fail when invalid option given: 'trash'", () => {
-        expect(() =>
-          fs.deleteFile(testFile, { trash: "~/trashbin" as any })
-        ).toThrow();
+      it("chown", () => {
+        expect(() => fs.chown(testFile, 1000, 1000)).toThrowMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'chown' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
     });
   });

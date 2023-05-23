@@ -8,7 +8,7 @@ import {
   match,
 } from "@reactgjs/gest";
 import GLib from "gi://GLib?version=2.0";
-import { Fs, IOStream } from "../src/index";
+import { Fs, FsError, IOStream } from "../src/index";
 
 const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
 Praesent quis turpis pharetra, lobortis felis vitae, lacinia magna.
@@ -51,6 +51,20 @@ let _i = 1;
 const getNextTestFile = () => `test${_i++}`;
 
 const TMP_DIR_PATH = GLib.get_current_dir() + "/__tests__/fs-test-tmp";
+
+const matchFsError = (message: any) => {
+  return match.allOf(
+    {
+      message,
+      stack: match.type("string"),
+    },
+    match.instanceOf(FsError)
+  );
+};
+
+const matchMessageContaining = (...str: string[]) => {
+  return match.allOf(...str.map((r) => match.stringContaining(r)));
+};
 
 export default describe("Fs", () => {
   let testFile = "";
@@ -672,131 +686,408 @@ export default describe("Fs", () => {
   });
 
   describe("negative scenarios", () => {
-    describe("listDir", () => {
-      it("should fail when invalid option given: 'followSymlinks'", async () => {
-        await expect(fs.listDir(".", { followSymlinks: 1 as any })).toReject();
+    describe("invalid options", () => {
+      describe("listDir", () => {
+        it("should fail when invalid option given: 'followSymlinks'", async () => {
+          await expect(
+            fs.listDir(".", { followSymlinks: 1 as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'listDir' failed with error: Invalid option 'followSymlinks' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'attributes'", async () => {
+          await expect(fs.listDir(".", { attributes: 1 as any })).toRejectMatch(
+            matchFsError(
+              "'listDir' failed with error: Invalid option 'attributes' - Expected a [array]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'batchSize'", async () => {
+          await expect(
+            fs.listDir(".", { batchSize: "12" as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [number]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'ioPriority'", async () => {
+          await expect(
+            fs.listDir(".", { ioPriority: "" as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'listDir' failed with error: Invalid option 'ioPriority' - Expected a [number]."
+            )
+          );
+        });
       });
 
-      it("should fail when invalid option given: 'attributes'", async () => {
-        await expect(fs.listDir(".", { attributes: 1 as any })).toReject();
+      describe("fileInfo", () => {
+        it("should fail when invalid option given: 'followSymlinks'", async () => {
+          await expect(
+            fs.fileInfo(".", { followSymlinks: 1 as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'fileInfo' failed with error: Invalid option 'followSymlinks' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'attributes'", async () => {
+          await expect(
+            fs.fileInfo(".", { attributes: 1 as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'fileInfo' failed with error: Invalid option 'attributes' - Expected a [array]."
+            )
+          );
+          await expect(
+            fs.fileInfo(".", { attributes: "*" as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'fileInfo' failed with error: Invalid option 'attributes' - Expected a [array]."
+            )
+          );
+          await expect(
+            fs.fileInfo(".", { attributes: [1] as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'fileInfo' failed with error: Invalid option 'attributes[0]' - Expected a [string]."
+            )
+          );
+        });
       });
 
-      it("should fail when invalid option given: 'batchSize'", async () => {
-        await expect(fs.listDir(".", { batchSize: "12" as any })).toReject();
+      describe("readTextFile", () => {
+        it("should fail when invalid option given: 'encoding'", async () => {
+          await fs.writeTextFile(testFile, "hello");
+
+          await expect(
+            fs.readTextFile(testFile, { encoding: 1 as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'readTextFile' failed with error: Invalid option 'encoding' - Expected a [string]."
+            )
+          );
+          await expect(
+            fs.readTextFile(testFile, { encoding: "lul" as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'readTextFile' failed with error: Invalid option 'encoding' - Expected a [valid encoding]."
+            )
+          );
+        });
       });
 
-      it("should fail when invalid option given: 'ioPriority'", async () => {
-        await expect(fs.listDir(".", { ioPriority: "" as any })).toReject();
+      describe("writeFile", () => {
+        it("should fail when invalid content argument", async () => {
+          await expect(fs.writeFile(testFile, "123" as any)).toRejectMatch(
+            matchFsError(
+              "'writeFile' failed with error: Expected a [Uint8Array]."
+            )
+          );
+        });
+      });
+
+      describe("writeTextFile", () => {
+        it("should fail when invalid option given: 'etag'", async () => {
+          await expect(
+            fs.writeTextFile(testFile, loremIpsum, { etag: 3 as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'writeTextFile' failed with error: Invalid option 'etag' - Expected a [string]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'makeBackup'", async () => {
+          await expect(
+            fs.writeTextFile(testFile, loremIpsum, { makeBackup: "yes" as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'writeTextFile' failed with error: Invalid option 'makeBackup' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'private'", async () => {
+          await expect(
+            fs.writeTextFile(testFile, loremIpsum, { private: 1 as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'writeTextFile' failed with error: Invalid option 'private' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'replace'", async () => {
+          await expect(
+            fs.writeTextFile(testFile, loremIpsum, { replace: {} as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'writeTextFile' failed with error: Invalid option 'replace' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid content argument", async () => {
+          await expect(fs.writeTextFile(testFile, 123 as any)).toRejectMatch(
+            matchFsError(
+              "'writeTextFile' failed with error: Expected a [string]."
+            )
+          );
+        });
+      });
+
+      describe("appendFile", () => {
+        it("should fail when invalid content argument", async () => {
+          await expect(fs.appendFile(testFile, "123" as any)).toRejectMatch(
+            matchFsError(
+              "'appendFile' failed with error: Expected a [Uint8Array]."
+            )
+          );
+        });
+      });
+
+      describe("appendTextFile", () => {
+        it("should fail when invalid content argument", async () => {
+          await expect(fs.appendTextFile(testFile, 123 as any)).toRejectMatch(
+            matchFsError(
+              "'appendTextFile' failed with error: Expected a [string]."
+            )
+          );
+        });
+      });
+
+      describe("moveFile", () => {
+        it("should fail when invalid option given: 'onProgress'", async () => {
+          await expect(
+            fs.moveFile(testFile, testFile + "-ov", {
+              onProgress: {} as any,
+            })
+          ).toRejectMatch(
+            matchFsError(
+              "'moveFile' failed with error: Invalid option 'onProgress' - Expected a [function]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'allMetadata'", async () => {
+          await expect(
+            fs.moveFile(testFile, testFile + "-ov", {
+              allMetadata: [] as any,
+            })
+          ).toRejectMatch(
+            matchFsError(
+              "'moveFile' failed with error: Invalid option 'allMetadata' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'makeBackup'", async () => {
+          await expect(
+            fs.moveFile(testFile, testFile + "-ov", {
+              makeBackup: 0 as any,
+            })
+          ).toRejectMatch(
+            matchFsError(
+              "'moveFile' failed with error: Invalid option 'makeBackup' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'noFallbackForMove'", async () => {
+          await expect(
+            fs.moveFile(testFile, testFile + "-ov", {
+              noFallbackForMove: (() => {}) as any,
+            })
+          ).toRejectMatch(
+            matchFsError(
+              "'moveFile' failed with error: Invalid option 'noFallbackForMove' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'overwrite'", async () => {
+          await expect(
+            fs.moveFile(testFile, testFile + "-ov", {
+              overwrite: "123" as any,
+            })
+          ).toRejectMatch(
+            matchFsError(
+              "'moveFile' failed with error: Invalid option 'overwrite' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'targetDefaultPermissions'", async () => {
+          await expect(
+            fs.moveFile(testFile, testFile + "-ov", {
+              targetDefaultPermissions: 1 as any,
+            })
+          ).toRejectMatch(
+            matchFsError(
+              "'moveFile' failed with error: Invalid option 'targetDefaultPermissions' - Expected a [boolean]."
+            )
+          );
+        });
+      });
+
+      describe("deleteFile", () => {
+        it("should fail when invalid option given: 'recursive'", async () => {
+          await expect(
+            fs.deleteFile(testFile, { recursive: "yes" as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'deleteFile' failed with error: Invalid option 'recursive' - Expected a [boolean]."
+            )
+          );
+        });
+
+        it("should fail when invalid option given: 'trash'", async () => {
+          await expect(
+            fs.deleteFile(testFile, { trash: "~/trashbin" as any })
+          ).toRejectMatch(
+            matchFsError(
+              "'deleteFile' failed with error: Invalid option 'trash' - Expected a [boolean]."
+            )
+          );
+        });
+      });
+
+      describe("chown", () => {
+        it("should fail when invalid uid argument", async () => {
+          await expect(fs.chown(testFile, "1000" as any, 1000)).toRejectMatch(
+            matchFsError(
+              "'chown' failed with error: Expected a [number]. (uid)"
+            )
+          );
+        });
+
+        it("should fail when invalid gid argument", async () => {
+          await expect(fs.chown(testFile, 1000, "1000" as any)).toRejectMatch(
+            matchFsError(
+              "'chown' failed with error: Expected a [number]. (gid)"
+            )
+          );
+        });
       });
     });
 
-    describe("fileInfo", () => {
-      it("should fail when invalid option given: 'followSymlinks'", async () => {
-        await expect(fs.fileInfo(".", { followSymlinks: 1 as any })).toReject();
+    describe("file doesn't exist", () => {
+      it("listDir", async () => {
+        await expect(fs.listDir(testFile)).toRejectMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'listDir' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'attributes'", async () => {
-        await expect(fs.fileInfo(".", { attributes: 1 as any })).toReject();
-        await expect(fs.fileInfo(".", { attributes: "*" as any })).toReject();
-      });
-    });
-
-    describe("readTextFile", () => {
-      it("should fail when invalid option given: 'encoding'", async () => {
-        await expect(fs.readTextFile(".", { encoding: 1 as any })).toReject();
-        await expect(
-          fs.readTextFile(".", { encoding: "lul" as any })
-        ).toReject();
-      });
-    });
-
-    describe("writeTextFile", () => {
-      it("should fail when invalid option given: 'etag'", async () => {
-        await expect(
-          fs.writeTextFile(testFile, loremIpsum, { etag: 3 as any })
-        ).toReject();
+      it("listFilenames", async () => {
+        await expect(fs.listFilenames(testFile)).toRejectMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'listFilenames' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'makeBackup'", async () => {
-        await expect(
-          fs.writeTextFile(testFile, loremIpsum, { makeBackup: "yes" as any })
-        ).toReject();
+      it("fileInfo", async () => {
+        await expect(fs.fileInfo(testFile)).toRejectMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'fileInfo' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'private'", async () => {
-        await expect(
-          fs.writeTextFile(testFile, loremIpsum, { private: 1 as any })
-        ).toReject();
+      it("readFile", async () => {
+        await expect(fs.readFile(testFile)).toRejectMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'readFile' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'replace'", async () => {
-        await expect(
-          fs.writeTextFile(testFile, loremIpsum, { replace: {} as any })
-        ).toReject();
-      });
-    });
-
-    describe("moveFile", () => {
-      it("should fail when invalid option given: 'onProgress'", async () => {
-        await expect(
-          fs.moveFile(testFile, testFile + "-ov", {
-            onProgress: {} as any,
-          })
-        ).toReject();
+      it("readTextFile", async () => {
+        await expect(fs.readTextFile(testFile)).toRejectMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'readTextFile' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'allMetadata'", async () => {
-        await expect(
-          fs.moveFile(testFile, testFile + "-ov", {
-            allMetadata: [] as any,
-          })
-        ).toReject();
+      it("moveFile", async () => {
+        await expect(fs.moveFile(testFile, testFile + "-ov")).toRejectMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'moveFile' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'makeBackup'", async () => {
-        await expect(
-          fs.moveFile(testFile, testFile + "-ov", {
-            makeBackup: 0 as any,
-          })
-        ).toReject();
+      it("copyFile", async () => {
+        await expect(fs.copyFile(testFile, testFile + "-ov")).toRejectMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'copyFile' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'noFallbackForMove'", async () => {
-        await expect(
-          fs.moveFile(testFile, testFile + "-ov", {
-            noFallbackForMove: (() => {}) as any,
-          })
-        ).toReject();
+      it("deleteFile", async () => {
+        await expect(fs.deleteFile(testFile)).toRejectMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'deleteFile' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'overwrite'", async () => {
-        await expect(
-          fs.moveFile(testFile, testFile + "-ov", {
-            overwrite: "123" as any,
-          })
-        ).toReject();
+      it("chmod", async () => {
+        await expect(fs.chmod(testFile, "rwxrwxrwx")).toRejectMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'chmod' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
 
-      it("should fail when invalid option given: 'targetDefaultPermissions'", async () => {
-        await expect(
-          fs.moveFile(testFile, testFile + "-ov", {
-            targetDefaultPermissions: 1 as any,
-          })
-        ).toReject();
-      });
-    });
-
-    describe("deleteFile", () => {
-      it("should fail when invalid option given: 'recursive'", async () => {
-        await expect(
-          fs.deleteFile(testFile, { recursive: "yes" as any })
-        ).toReject();
-      });
-
-      it("should fail when invalid option given: 'trash'", async () => {
-        await expect(
-          fs.deleteFile(testFile, { trash: "~/trashbin" as any })
-        ).toReject();
+      it("chown", async () => {
+        await expect(fs.chown(testFile, 1000, 1000)).toRejectMatch(
+          matchFsError(
+            matchMessageContaining(
+              "'chown' failed with error:",
+              "No such file or directory"
+            )
+          )
+        );
       });
     });
   });
