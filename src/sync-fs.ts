@@ -36,23 +36,46 @@ interface SyncListFilenamesOptions
   extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {}
 
 interface SyncListDirOptions extends Mixin<[SyncListFilenamesOptions]> {
+  /**
+   * A list of additional attributes to query for each file.
+   * These attributes can be then later accessed via the
+   * `file._gioInfo.get_attribute_*` methods.
+   */
   attributes?: string[];
 }
 
 interface SyncFileInfoOptions
   extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {
+  /**
+   * A list of additional attributes to query for each file.
+   * These attributes can be then later accessed via the
+   * `file._gioInfo.get_attribute_*` methods.
+   */
   attributes?: string[];
 }
 
 interface SyncReadFileOptions extends Mixin<[SyncFsOperationOptions]> {}
 
 interface SyncReadTextFileOptions extends Mixin<[SyncReadFileOptions]> {
+  /**
+   * The encoding to use when reading the file.
+   *
+   * @default "utf-8"
+   */
   encoding?: Encoding;
 }
 
 interface SyncWriteFileOptions
   extends Mixin<[SyncFsOperationOptions, FileCreateFlagOptions]> {
   etag?: string;
+  /**
+   * When enabled, if a file already exists at the given path, it
+   * will be backed up before being overwritten.
+   *
+   * Created backup can be found at the same directory as the
+   * original file, with the same name, but with a "~" appended
+   * at the end.
+   */
   makeBackup?: boolean;
 }
 
@@ -65,17 +88,28 @@ interface SyncWriteTextFileOptions extends Mixin<[SyncWriteFileOptions]> {}
 
 interface SyncMoveFileOptions
   extends Mixin<[SyncFsOperationOptions, FileCopyFlagOptions]> {
+  /**
+   * A callback that will be called with the current progress of
+   * the operation.
+   */
   onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
 }
 
 interface SyncCopyFileOptions
-  extends Mixin<[SyncMoveFileOptions, FileCopyFlagOptions]> {
-  onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
-}
+  extends Mixin<[SyncMoveFileOptions, FileCopyFlagOptions]> {}
 
 interface SyncDeleteFileOptions
   extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {
+  /**
+   * When enabled, instead of permanently deleting the file, it
+   * will be moved to the trash directory.
+   */
   trash?: boolean;
+  /**
+   * When enabled, if a file is a directory, all of the files
+   * inside it will be deleted before deleting the directory
+   * itself.
+   */
   recursive?: boolean;
 }
 
@@ -86,6 +120,15 @@ interface SyncChownOptions
   extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {}
 
 interface SyncFsOptions {
+  /**
+   * Path to a directory which will be used as a base for all
+   * calls on this SyncFs instance.
+   *
+   * @example
+   *   const fs = new SyncFs({ cwd: "/home/user" });
+   *
+   *   fs.readFile("./file.txt"); // will read /home/user/file.txt
+   */
   cwd?: string;
 }
 

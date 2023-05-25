@@ -31,89 +31,154 @@ type Mixin<T extends any[]> = T["length"] extends 0
   : Mixin<Tail<T>> & T[0];
 
 interface FsOperationOptions {
+  /**
+   * An instance of the AbortSignal class, it requires an
+   * AbortSignal` class to be available in the running
+   * environment. (as of version 1.74.2, gjs does not have
+   * AbortSignal or AbortController implemented, so a polyfill
+   * will be required for this option to work)
+   */
   abortSignal?: AbortSignal;
 }
 
-interface ListFilenamesOptions
-  extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
+interface IOOperationOptions {
+  /**
+   * Priority of the I/O operation.
+   *
+   * @default `GLib.PRIORITY_DEFAULT`
+   */
   ioPriority?: number;
+}
+
+interface ListFilenamesOptions
+  extends Mixin<
+    [FsOperationOptions, IOOperationOptions, FileQueryFlagOptions]
+  > {
+  /**
+   * When listing files in a directory, dir children will be
+   * enumerated in batches, this option defines the size of each
+   * batch.
+   */
   batchSize?: number;
 }
 
 interface ListDirOptions extends Mixin<[ListFilenamesOptions]> {
+  /**
+   * A list of additional attributes to query for each file.
+   * These attributes can be then later accessed via the
+   * `file._gioInfo.get_attribute_*` methods.
+   */
   attributes?: string[];
 }
 
 interface FileInfoOptions
-  extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
+  extends Mixin<
+    [FsOperationOptions, IOOperationOptions, FileQueryFlagOptions]
+  > {
+  /**
+   * A list of additional attributes to query for each file.
+   * These attributes can be then later accessed via the
+   * `file._gioInfo.get_attribute_*` methods.
+   */
   attributes?: string[];
-  ioPriority?: number;
 }
 
 interface FileExistsOptions
-  extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
-  ioPriority?: number;
-}
+  extends Mixin<
+    [FsOperationOptions, IOOperationOptions, FileQueryFlagOptions]
+  > {}
 
 interface ReadFileOptions extends Mixin<[FsOperationOptions]> {}
 
 interface ReadTextFileOptions extends Mixin<[ReadFileOptions]> {
+  /**
+   * The encoding to use when reading the file.
+   *
+   * @default "utf-8"
+   */
   encoding?: Encoding;
 }
 
 interface WriteFileOptions
-  extends Mixin<[FsOperationOptions, FileCreateFlagOptions]> {
-  ioPriority?: number;
+  extends Mixin<
+    [FsOperationOptions, IOOperationOptions, FileCreateFlagOptions]
+  > {
   etag?: string;
+  /**
+   * When enabled, if a file already exists at the given path, it
+   * will be backed up before being overwritten.
+   *
+   * Created backup can be found at the same directory as the
+   * original file, with the same name, but with a "~" appended
+   * at the end.
+   */
   makeBackup?: boolean;
 }
 
 interface AppendFileOptions
-  extends Mixin<[WriteFileOptions, FileCreateFlagOptions]> {
-  ioPriority?: number;
-}
+  extends Mixin<
+    [WriteFileOptions, IOOperationOptions, FileCreateFlagOptions]
+  > {}
 
 interface AppendTextFileOptions extends Mixin<[AppendFileOptions]> {}
 
 interface WriteTextFileOptions extends Mixin<[WriteFileOptions]> {}
 
 interface MoveFileOptions
-  extends Mixin<[FsOperationOptions, FileCopyFlagOptions]> {
-  ioPriority?: number;
+  extends Mixin<[FsOperationOptions, IOOperationOptions, FileCopyFlagOptions]> {
+  /**
+   * As of version 1.74.2, gjs is unable to handle the
+   * `onProgress` callbacks for async IO operations as those are
+   * called from other threads. It is advised not to use this
+   * option at this time.
+   */
   onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
 }
 
 interface CopyFileOptions
-  extends Mixin<[MoveFileOptions, FileCopyFlagOptions]> {
-  ioPriority?: number;
-  onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
-}
+  extends Mixin<[MoveFileOptions, FileCopyFlagOptions]> {}
 
-interface DeleteFileOptions extends Mixin<[FileInfoOptions, ListDirOptions]> {
+interface DeleteFileOptions
+  extends Mixin<[FileInfoOptions, IOOperationOptions, ListDirOptions]> {
+  /**
+   * When enabled, instead of permanently deleting the file, it
+   * will be moved to the trash directory.
+   */
   trash?: boolean;
-  ioPriority?: number;
+  /**
+   * When enabled, if a file is a directory, all of the files
+   * inside it will be deleted before deleting the directory
+   * itself.
+   */
   recursive?: boolean;
 }
 
-interface MakeDirOptions extends Mixin<[FsOperationOptions]> {
-  ioPriority?: number;
-}
+interface MakeDirOptions
+  extends Mixin<[FsOperationOptions, IOOperationOptions]> {}
 
-interface MakeLinkOptions extends Mixin<[FsOperationOptions]> {
-  ioPriority?: number;
-}
+interface MakeLinkOptions
+  extends Mixin<[FsOperationOptions, IOOperationOptions]> {}
 
 interface ChmodOptions
-  extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
-  ioPriority?: number;
-}
+  extends Mixin<
+    [FsOperationOptions, IOOperationOptions, FileQueryFlagOptions]
+  > {}
 
 interface ChownOptions
-  extends Mixin<[FsOperationOptions, FileQueryFlagOptions]> {
-  ioPriority?: number;
-}
+  extends Mixin<
+    [FsOperationOptions, IOOperationOptions, FileQueryFlagOptions]
+  > {}
 
 interface FsOptions {
+  /**
+   * Path to a directory which will be used as a base for all
+   * calls on this Fs instance.
+   *
+   * @example
+   *   const fs = new Fs({ cwd: "/home/user" });
+   *
+   *   fs.readFile("./file.txt"); // will read /home/user/file.txt
+   */
   cwd?: string;
 }
 
