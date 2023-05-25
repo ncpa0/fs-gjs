@@ -6,6 +6,7 @@ import {
   expect,
   it,
   match,
+  skip,
 } from "@reactgjs/gest";
 import GLib from "gi://GLib?version=2.0";
 import { Fs, IOStream } from "../src/index";
@@ -598,21 +599,19 @@ export default describe("Fs", () => {
        * the version of GJS+GIO that is shipped with that image
        * so we have to skip this test.
        */
-      if (!_CI_) {
-        it("should make a link", async () => {
-          await fs.writeTextFile(testFile, loremIpsum);
-          await fs.makeLink(testFile + "-link", testFile);
+      const itOnlyLocal = _CI_ ? skip : it;
 
-          const exists = await fs.fileExists(testFile + "-link");
-          expect(exists).toBe(true);
+      itOnlyLocal("should make a link", async () => {
+        await fs.writeTextFile(testFile, loremIpsum);
+        await fs.makeLink(testFile + "-link", testFile);
 
-          const info = await fs.fileInfo(testFile + "-link");
-          expect(info.isSymlink).toBe(true);
-          expect(info.symlinkTarget).toMatchRegex(
-            new RegExp(`^.+?${testFile}$`)
-          );
-        });
-      }
+        const exists = await fs.fileExists(testFile + "-link");
+        expect(exists).toBe(true);
+
+        const info = await fs.fileInfo(testFile + "-link");
+        expect(info.isSymlink).toBe(true);
+        expect(info.symlinkTarget).toMatchRegex(new RegExp(`^.+?${testFile}$`));
+      });
     });
 
     describe("chmod", () => {
