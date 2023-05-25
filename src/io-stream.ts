@@ -57,6 +57,7 @@ class IOStream {
     this._options.get("replace");
   }
 
+  /** The underlying Gio.FileIOStream. */
   public get _gioStream() {
     return this._stream!;
   }
@@ -174,6 +175,13 @@ class IOStream {
     }
   }
 
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and returns the current cursor position.
+   *
+   * @returns The (positive or zero) offset from the beginning of
+   *   the buffer, zero if the target is not seekable.
+   */
   public async currentPosition() {
     return await promise<number>(
       "IOStream.currentPosition",
@@ -190,6 +198,13 @@ class IOStream {
     );
   }
 
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and moves the cursor position by the given offset,
+   * from it's current position.
+   *
+   * @param offset The offset from the current cursor position.
+   */
   public async seek(offset: number) {
     return await promise("IOStream.seek", null, async (p) => {
       validateInteger(offset);
@@ -211,6 +226,13 @@ class IOStream {
     });
   }
 
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and moves the cursor position by the given offset,
+   * from the end of the stream.
+   *
+   * @param offset The offset from the end of the stream.
+   */
   public async seekFromEnd(offset: number) {
     return await promise("IOStream.seekFromEnd", null, async (p) => {
       validateInteger(offset);
@@ -232,6 +254,13 @@ class IOStream {
     });
   }
 
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and moves the cursor position by the given offset,
+   * from the start of the stream.
+   *
+   * @param offset The offset from the start of the stream.
+   */
   public async seekFromStart(offset: number) {
     return await promise("IOStream.seekFromStart", null, async (p) => {
       validateInteger(offset);
@@ -253,9 +282,18 @@ class IOStream {
     });
   }
 
-  public async skip(offset: number) {
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and skips the given number of bytes, effectively
+   * moving the cursor position by the given offset, from it's
+   * current position.
+   *
+   * @param byteCount The number of bytes to be skipped.
+   * @returns The number of bytes skipped.
+   */
+  public async skip(byteCount: number) {
     return await promise<number>("IOStream.skip", null, async (p) => {
-      validatePositiveInteger(offset);
+      validatePositiveInteger(byteCount);
 
       await this._mutex.acquire();
 
@@ -264,7 +302,7 @@ class IOStream {
       try {
         bytesSkipped = await promise<number>("IOStream.skip", null, (p2) => {
           this._stream!.input_stream.skip_async(
-            offset,
+            byteCount,
             this._options.get("ioPriority", GLib.PRIORITY_DEFAULT),
             null,
             p2.asyncCallback((_, result: Gio.AsyncResult) => {
@@ -287,6 +325,14 @@ class IOStream {
     });
   }
 
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and then writes the given content to the stream at
+   * the current cursor position.
+   *
+   * @param content Array of bytes (`Uint8Array`) that is to be
+   *   written.
+   */
   public async write(content: Uint8Array) {
     return await promise<number>("IOStream.write", null, async (p) => {
       validateBytes(content);
@@ -328,6 +374,14 @@ class IOStream {
     });
   }
 
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and then reads the given number of bytes starting
+   * from the current cursor position.
+   *
+   * @param byteCount The number of bytes to read.
+   * @returns Array of bytes read (`Uint8Array`)
+   */
   public async read(byteCount: number) {
     return await promise<Uint8Array>("IOStream.read", null, async (p) => {
       validatePositiveInteger(byteCount);
@@ -364,6 +418,14 @@ class IOStream {
     });
   }
 
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and then reads all remaining bytes from the
+   * stream.
+   *
+   * @param options Options for the operation.
+   * @param options.chunkSize Howe many bytes to read at a time.
+   */
   public async readAll(options?: { chunkSize?: number }) {
     return await promise<Uint8Array>("IOStream.readAll", null, async (p) => {
       const { chunkSize = 500000 } = options ?? {};
@@ -428,6 +490,15 @@ class IOStream {
     });
   }
 
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and then truncates the stream to the given
+   * length.
+   *
+   * If the stream was previously larger than `length`, the extra
+   * data is discarded. If the stream was previously shorter than
+   * `length`, it is extended with NUL ('\0') bytes.
+   */
   public async truncate(length: number) {
     return await promise("IOStream.truncate", null, async (p) => {
       this._ensureCanTruncate();
@@ -467,6 +538,11 @@ class IOStream {
     });
   }
 
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and then forces an asynchronous write of all
+   * user-space buffered data.
+   */
   public async flush() {
     return await promise("IOStream.flush", null, async (p) => {
       await this._mutex.acquire();
@@ -497,6 +573,10 @@ class IOStream {
     });
   }
 
+  /**
+   * Waits for all the pending operations on the stream to
+   * complete, and then closes the stream.
+   */
   public async close() {
     if (this._stream) {
       return await promise("IOStream.close", null, async (p) => {

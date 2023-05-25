@@ -75,6 +75,7 @@ class SyncIOStream {
     );
   }
 
+  /** The underlying Gio.FileIOStream. */
   public get _gioStream() {
     return this._stream!;
   }
@@ -141,11 +142,21 @@ class SyncIOStream {
       throw new FsError("Stream cannot truncate.");
     }
   }
-
+  /**
+   * Returns the current cursor position.
+   *
+   * @returns The (positive or zero) offset from the beginning of
+   *   the buffer, zero if the target is not seekable.
+   */
   public currentPosition() {
     return this._stream!.tell();
   }
-
+  /**
+   * Moves the cursor position by the given offset, from it's
+   * current position.
+   *
+   * @param offset The offset from the current cursor position.
+   */
   public seek(offset: number) {
     this._ensureCanSeek();
     validateInteger(offset);
@@ -156,7 +167,12 @@ class SyncIOStream {
       throw new FsError("Failed to seek stream.");
     }
   }
-
+  /**
+   * Moves the cursor position by the given offset, from the end
+   * of the stream.
+   *
+   * @param offset The offset from the end of the stream.
+   */
   public seekFromEnd(offset: number) {
     this._ensureCanSeek();
     validateInteger(offset);
@@ -167,7 +183,12 @@ class SyncIOStream {
       throw new FsError("Failed to seek stream.");
     }
   }
-
+  /**
+   * Moves the cursor position by the given offset, from the
+   * start of the stream.
+   *
+   * @param offset The offset from the start of the stream.
+   */
   public seekFromStart(offset: number) {
     this._ensureCanSeek();
     validateInteger(offset);
@@ -178,10 +199,17 @@ class SyncIOStream {
       throw new FsError("Failed to seek stream.");
     }
   }
-
-  public skip(offset: number) {
-    validatePositiveInteger(offset);
-    const bytesSkipped = this._stream!.input_stream.skip(offset, null);
+  /**
+   * Skips the given number of bytes, effectively moving the
+   * cursor position by the given offset, from it's current
+   * position.
+   *
+   * @param byteCount The number of bytes to be skipped.
+   * @returns The number of bytes skipped.
+   */
+  public skip(byteCount: number) {
+    validatePositiveInteger(byteCount);
+    const bytesSkipped = this._stream!.input_stream.skip(byteCount, null);
 
     if (bytesSkipped === -1) {
       throw new FsError("Failed to skip stream.");
@@ -190,6 +218,13 @@ class SyncIOStream {
     return bytesSkipped;
   }
 
+  /**
+   * Writes the given content to the stream at the current cursor
+   * position.
+   *
+   * @param content Array of bytes (`Uint8Array`) that is to be
+   *   written.
+   */
   public write(content: Uint8Array) {
     validateBytes(content);
 
@@ -207,6 +242,13 @@ class SyncIOStream {
     return bytesWritten;
   }
 
+  /**
+   * Reads the given number of bytes starting from the current
+   * cursor position.
+   *
+   * @param byteCount The number of bytes to read.
+   * @returns Array of bytes read (`Uint8Array`)
+   */
   public read(byteCount: number) {
     validatePositiveInteger(byteCount);
 
@@ -219,6 +261,12 @@ class SyncIOStream {
     return bytes.unref_to_array();
   }
 
+  /**
+   * Reads all remaining bytes from the stream.
+   *
+   * @param options Options for the operation.
+   * @param options.chunkSize Howe many bytes to read at a time.
+   */
   public readAll(options?: { chunkSize?: number }) {
     const { chunkSize = 500000 } = options ?? {};
     validatePositiveInteger(chunkSize);
@@ -249,6 +297,13 @@ class SyncIOStream {
     return result;
   }
 
+  /**
+   * Truncates the stream to the given length.
+   *
+   * If the stream was previously larger than `length`, the extra
+   * data is discarded. If the stream was previously shorter than
+   * `length`, it is extended with NUL ('\0') bytes.
+   */
   public truncate(length: number) {
     this._ensureCanTruncate();
     validatePositiveInteger(length);
@@ -260,6 +315,10 @@ class SyncIOStream {
     }
   }
 
+  /**
+   * Forces an asynchronous write of all user-space buffered
+   * data.
+   */
   public flush() {
     const success = this._stream!.output_stream.flush(null);
 
@@ -268,6 +327,7 @@ class SyncIOStream {
     }
   }
 
+  /** Closes the stream. */
   public close() {
     if (this._stream) {
       const success = this._stream.close(null);
