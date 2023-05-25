@@ -1,0 +1,45 @@
+name: Run Tests
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+env:
+  NPM_TOKEN: ""
+
+jobs:
+  run-tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install GJS
+        run: |
+          sudo sed -i 's/azure\.//' /etc/apt/sources.list
+          echo nameserver 8.8.8.8 | sudo tee /etc/resolv.conf
+          echo "Starting update"
+          sudo apt-get update -o Acquire::ForceIPv4=true -y
+          echo "Installing GJS"
+          sudo apt-get install -o Acquire::ForceIPv4=true -y gjs
+      - uses: actions/checkout@v3
+        name: Checkout to master
+        with:
+          ref: master
+      - uses: actions/setup-node@v3
+        name: Setup Node.js
+        with:
+          node-version: 18
+          cache: yarn
+      - name: Install dependencies
+        run: ./.yarn/yarn.cjs install --immutable
+      - name: Run TypeScript
+        run: ./.yarn/yarn.cjs test:tsc
+      - name: Run linter
+        run: ./.yarn/yarn.cjs test:lint
+      - name: Run prettier
+        run: ./.yarn/yarn.cjs test:prettier
+      - name: Run build
+        run: ./.yarn/yarn.cjs build
+      - name: Run unit tests
+        run: ./.yarn/yarn.cjs test:unit
