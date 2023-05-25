@@ -15,6 +15,6 @@
 /.yarn
 /.yarnrc.yml
 /git-hook-tasks.config.json
-/gest.config.js
+/gest.config.*
 /tsconfig.json
 /yarn-error.log
