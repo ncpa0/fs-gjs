@@ -21,6 +21,7 @@ import {
   OptValidators,
   validateBytes,
   validateNumber,
+  validatePermissions,
   validateText,
 } from "./validators";
 
@@ -1098,6 +1099,8 @@ class Fs {
     const opt = OptionsResolver(options, OptValidators);
 
     return promise("chmod", opt.get("abortSignal"), async (p) => {
+      validatePermissions(mode);
+
       const queryFlag = getQueryFileFlag(opt);
 
       const info = Gio.FileInfo.new();

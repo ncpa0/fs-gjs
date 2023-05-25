@@ -1,5 +1,6 @@
 import { VALID_ENCODINGS } from "./encoding";
 import { InvalidOptionError } from "./errors";
+import type { FilePermission } from "./permission-parser";
 
 type LiteralToType<
   T extends "number" | "string" | "boolean" | "function" | "object"
@@ -195,6 +196,40 @@ export function validatePositiveInteger(
     throw new TypeError(
       "Expected a [positive integer]." + (name ? ` (${name})` : "")
     );
+  }
+}
+
+const PERMS_REGEXP = /^[r-][w-][x-][r-][w-][x-][r-][w-][x-]$/;
+export function validatePermissions(perms: FilePermission) {
+  if (typeof perms === "number") {
+    return;
+  }
+
+  if (typeof perms === "string" && !PERMS_REGEXP.test(perms)) {
+    throw new TypeError("Expected a [string] detailing permissions.");
+  }
+
+  if (typeof perms === "object") {
+    const isValid =
+      typeof perms.group === "object" &&
+      perms.group != null &&
+      typeof perms.group.execute === "boolean" &&
+      typeof perms.group.read === "boolean" &&
+      typeof perms.group.write === "boolean" &&
+      typeof perms.group === "object" &&
+      perms.others != null &&
+      typeof perms.others.execute === "boolean" &&
+      typeof perms.others.read === "boolean" &&
+      typeof perms.others.write === "boolean" &&
+      typeof perms.others === "object" &&
+      perms.owner != null &&
+      typeof perms.owner.execute === "boolean" &&
+      typeof perms.owner.read === "boolean" &&
+      typeof perms.owner.write === "boolean";
+
+    if (!isValid) {
+      throw new TypeError("Expected a [object] detailing permissions.");
+    }
   }
 }
 

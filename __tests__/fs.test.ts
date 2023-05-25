@@ -633,6 +633,26 @@ export default describe("Fs", () => {
         expect(info2.canRead).toBe(false);
         expect(info2.canWrite).toBe(false);
         expect(info2.canExecute).toBe(false);
+
+        await fs.chmod(testFile, {
+          group: {
+            read: true,
+            write: true,
+            execute: true,
+          },
+          others: {
+            read: true,
+            write: true,
+            execute: true,
+          },
+          owner: { read: true, write: true, execute: true },
+        });
+
+        const info3 = await fs.fileInfo(testFile);
+
+        expect(info3.canRead).toBe(true);
+        expect(info3.canWrite).toBe(true);
+        expect(info3.canExecute).toBe(true);
       });
     });
 
@@ -981,6 +1001,44 @@ export default describe("Fs", () => {
           await expect(fs.chown(testFile, 1000, "1000" as any)).toRejectMatch(
             matchFsError(
               "'chown' failed with error: Expected a [number]. (gid)"
+            )
+          );
+        });
+      });
+
+      describe("chmod", () => {
+        it("should fail when invalid mode argument", async () => {
+          await expect(fs.chmod(testFile, "777" as any)).toRejectMatch(
+            matchFsError(
+              "'chmod' failed with error: Expected a [string] detailing permissions."
+            )
+          );
+          await expect(fs.chmod(testFile, {} as any)).toRejectMatch(
+            matchFsError(
+              "'chmod' failed with error: Expected a [object] detailing permissions."
+            )
+          );
+          await expect(
+            fs.chmod(testFile, {
+              group: {
+                execute: true,
+                read: true,
+                write: true,
+              },
+              others: {
+                execute: true,
+                read: true,
+                write: true,
+              },
+              owner: {
+                execute: true,
+                read: true,
+                write: 1 as any,
+              },
+            })
+          ).toRejectMatch(
+            matchFsError(
+              "'chmod' failed with error: Expected a [object] detailing permissions."
             )
           );
         });

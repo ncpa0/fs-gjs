@@ -21,6 +21,7 @@ import {
   OptValidators,
   validateBytes,
   validateNumber,
+  validatePermissions,
   validateText,
 } from "./validators";
 
@@ -772,6 +773,8 @@ class SyncFs {
    * - An object describing all the permissions
    */
   public chmod(path: string, mode: FilePermission, options?: SyncChmodOptions) {
+    validatePermissions(mode);
+
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
     const queryFlag = getQueryFileFlag(opt);
