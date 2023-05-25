@@ -43,7 +43,7 @@ jobs:
       - name: Building
         run: ./.yarn/yarn.cjs build
       - name: Run unit tests
-        run: ./.yarn/yarn.cjs test:unit
+        run: ./.yarn/yarn.cjs test:unit --ci
       - name: Publishing
         env:
           NPM_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
