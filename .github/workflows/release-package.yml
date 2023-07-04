@@ -20,15 +20,12 @@ jobs:
       issues: write
       repository-projects: write
     runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+      options: -u root
     steps:
       - name: Install GJS
-        run: |
-          sudo sed -i 's/azure\.//' /etc/apt/sources.list
-          echo nameserver 8.8.8.8 | sudo tee /etc/resolv.conf
-          echo "Starting update"
-          sudo apt-get update -o Acquire::ForceIPv4=true -y
-          echo "Installing GJS"
-          sudo apt-get install -o Acquire::ForceIPv4=true -y gjs
+        run: pacman -Sy --noconfirm gjs
       - uses: actions/checkout@v3
         with:
           ref: master
@@ -37,7 +34,7 @@ jobs:
         with:
           node-version: 18
       - name: Installing dependencies
-        run: ./.yarn/yarn.cjs install
+        run: ./.yarn/yarn.cjs install --frozen-lockfile
       - name: Validating syntax
         run: ./.yarn/yarn.cjs test:tsc
       - name: Building
