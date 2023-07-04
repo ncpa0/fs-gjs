@@ -62,16 +62,14 @@ export default describe("IOStream", () => {
   });
 
   describe("positive scenarios", () => {
-    it("should manage it's state", async () => {
+    it("should manage it's state", async (t) => {
       const stream = await fs.openFileIOStream(testFile, "CREATE");
-
-      try {
-        expect(stream.state).toBe("OPEN");
-      } finally {
+      t.defer(async () => {
         await stream.close();
-      }
+        expect(stream.state).toBe("CLOSED");
+      });
 
-      expect(stream.state).toBe("CLOSED");
+      expect(stream.state).toBe("OPEN");
     });
 
     it("should create a new file", async () => {
@@ -85,160 +83,138 @@ export default describe("IOStream", () => {
       expect(exists).toBe(true);
     });
 
-    it("should open an existing file", async () => {
+    it("should open an existing file", async (t) => {
       await fs.writeTextFile(testFile, loremIpsum);
 
       const stream = await fs.openFileIOStream(testFile, "OPEN");
+      t.defer(() => stream.close());
 
-      try {
-        const data = await stream.readAll();
+      const data = await stream.readAll();
 
-        expect(new TextDecoder().decode(data)).toBe(loremIpsum);
-      } finally {
-        await stream.close();
-      }
+      expect(new TextDecoder().decode(data)).toBe(loremIpsum);
     });
 
-    it("should replace an existing file", async () => {
+    it("should replace an existing file", async (t) => {
       await fs.writeTextFile(testFile, loremIpsum);
 
       const stream = await fs.openFileIOStream(testFile, "REPLACE");
+      t.defer(() => stream.close());
 
-      try {
-        const data = await stream.readAll();
+      const data = await stream.readAll();
 
-        expect(new TextDecoder().decode(data)).toBe("");
-      } finally {
-        await stream.close();
-      }
+      expect(new TextDecoder().decode(data)).toBe("");
     });
 
-    it("should correctly queue writes and wait for them", async () => {
+    it("should correctly queue writes and wait for them", async (t) => {
       const stream = await fs.openFileIOStream(testFile, "CREATE");
+      t.defer(() => stream.close());
 
-      try {
-        stream.write(encode("Hello "));
-        stream.write(encode("World!\n"));
-        stream.write(encode("How are you?"));
-        stream.write(encode(" I'm fine!\n"));
+      stream.write(encode("Hello "));
+      stream.write(encode("World!\n"));
+      stream.write(encode("How are you?"));
+      stream.write(encode(" I'm fine!\n"));
 
-        await stream.finishPending();
+      await stream.finishPending();
 
-        await stream.seekFromStart(0);
+      await stream.seekFromStart(0);
 
-        const data = await stream.readAll();
+      const data = await stream.readAll();
 
-        expect(new TextDecoder().decode(data)).toBe(
-          "Hello World!\nHow are you? I'm fine!\n"
-        );
-      } finally {
-        await stream.close();
-      }
+      expect(new TextDecoder().decode(data)).toBe(
+        "Hello World!\nHow are you? I'm fine!\n"
+      );
 
       const fdata = await fs.readTextFile(testFile);
 
       expect(fdata).toBe("Hello World!\nHow are you? I'm fine!\n");
     });
 
-    it("should correctly skip bytes", async () => {
+    it("should correctly skip bytes", async (t) => {
       const stream = await fs.openFileIOStream(testFile, "CREATE");
+      t.defer(() => stream.close());
 
-      try {
-        await stream.write(new Uint8Array([11, 22, 33, 44, 55, 66, 77, 88]));
-        await stream.seekFromStart(0);
+      await stream.write(new Uint8Array([11, 22, 33, 44, 55, 66, 77, 88]));
+      await stream.seekFromStart(0);
 
-        const firstTwoBytes = await stream.read(2);
+      const firstTwoBytes = await stream.read(2);
 
-        expect(compareBytes(firstTwoBytes, new Uint8Array([11, 22]))).toBe(
-          true
-        );
+      expect(compareBytes(firstTwoBytes, new Uint8Array([11, 22]))).toBe(true);
 
-        await stream.skip(2);
+      await stream.skip(2);
 
-        const nextTwoBytes = await stream.read(2);
+      const nextTwoBytes = await stream.read(2);
 
-        expect(compareBytes(nextTwoBytes, new Uint8Array([55, 66]))).toBe(true);
+      expect(compareBytes(nextTwoBytes, new Uint8Array([55, 66]))).toBe(true);
 
-        await stream.skip(1);
+      await stream.skip(1);
 
-        const lastTwoBytes = await stream.read(2);
+      const lastTwoBytes = await stream.read(2);
 
-        expect(compareBytes(lastTwoBytes, new Uint8Array([88]))).toBe(true);
+      expect(compareBytes(lastTwoBytes, new Uint8Array([88]))).toBe(true);
 
-        await stream.seekFromStart(1);
+      await stream.seekFromStart(1);
 
-        await stream.write(new Uint8Array([456, 789]));
+      await stream.write(new Uint8Array([456, 789]));
 
-        await stream.seekFromStart(0);
+      await stream.seekFromStart(0);
 
-        const data = await stream.read(4);
+      const data = await stream.read(4);
 
-        expect(compareBytes(data, new Uint8Array([11, 456, 789, 44]))).toBe(
-          true
-        );
-      } finally {
-        await stream.close();
-      }
+      expect(compareBytes(data, new Uint8Array([11, 456, 789, 44]))).toBe(true);
     });
 
-    it("Should correctly truncate", async () => {
+    it("Should correctly truncate", async (t) => {
       const stream = await fs.openFileIOStream(testFile, "CREATE");
+      t.defer(() => stream.close());
 
-      try {
-        await stream.write(
-          new Uint8Array(Array.from({ length: 100 }, (_, i) => i))
-        );
-        await stream.seekFromStart(0);
+      await stream.write(
+        new Uint8Array(Array.from({ length: 100 }, (_, i) => i))
+      );
+      await stream.seekFromStart(0);
 
-        await stream.truncate(37);
+      await stream.truncate(37);
 
-        const data = await stream.readAll();
+      const data = await stream.readAll();
 
-        expect(
-          compareBytes(
-            data,
-            new Uint8Array(Array.from({ length: 37 }, (_, i) => i))
-          )
-        ).toBe(true);
-      } finally {
-        await stream.close();
-      }
+      expect(
+        compareBytes(
+          data,
+          new Uint8Array(Array.from({ length: 37 }, (_, i) => i))
+        )
+      ).toBe(true);
     });
 
-    it("should correctly tell the cursor position", async () => {
+    it("should correctly tell the cursor position", async (t) => {
       const stream = await fs.openFileIOStream(testFile, "CREATE");
+      t.defer(() => stream.close());
 
-      try {
-        await stream.write(new Uint8Array([11, 22, 33, 44, 55, 66, 77, 88]));
+      await stream.write(new Uint8Array([11, 22, 33, 44, 55, 66, 77, 88]));
 
-        expect(await stream.currentPosition()).toBe(8);
+      expect(await stream.currentPosition()).toBe(8);
 
-        await stream.seekFromStart(0);
+      await stream.seekFromStart(0);
 
-        expect(await stream.currentPosition()).toBe(0);
+      expect(await stream.currentPosition()).toBe(0);
 
-        await stream.skip(4);
+      await stream.skip(4);
 
-        expect(await stream.currentPosition()).toBe(4);
+      expect(await stream.currentPosition()).toBe(4);
 
-        await stream.seekFromEnd(-2);
+      await stream.seekFromEnd(-2);
 
-        expect(await stream.currentPosition()).toBe(6);
+      expect(await stream.currentPosition()).toBe(6);
 
-        await stream.write(new Uint8Array([10001, 10002, 10003, 10004]));
+      await stream.write(new Uint8Array([10001, 10002, 10003, 10004]));
 
-        expect(await stream.currentPosition()).toBe(10);
+      expect(await stream.currentPosition()).toBe(10);
 
-        await stream.seekFromStart(4);
+      await stream.seekFromStart(4);
 
-        expect(await stream.currentPosition()).toBe(4);
+      expect(await stream.currentPosition()).toBe(4);
 
-        await stream.read(2);
+      await stream.read(2);
 
-        expect(await stream.currentPosition()).toBe(6);
-      } finally {
-        await stream.close();
-      }
+      expect(await stream.currentPosition()).toBe(6);
     });
   });
 
@@ -309,169 +285,143 @@ export default describe("IOStream", () => {
       });
 
       describe("seek", () => {
-        it("should fail when invalid given invalid argument", async () => {
+        it("should fail when invalid given invalid argument", async (t) => {
           const stream = await fs.openFileIOStream(testFile, "CREATE");
+          t.defer(() => stream.close());
 
-          try {
-            await expect(stream.seek("1" as any)).toRejectMatch(
-              matchFsError(
-                "'IOStream.seek' failed with error: Expected a [integer]."
-              )
-            );
-            await expect(stream.seek(1.1)).toRejectMatch(
-              matchFsError(
-                "'IOStream.seek' failed with error: Expected a [integer]."
-              )
-            );
-          } finally {
-            await stream.close();
-          }
+          await expect(stream.seek("1" as any)).toRejectMatch(
+            matchFsError(
+              "'IOStream.seek' failed with error: Expected a [integer]."
+            )
+          );
+          await expect(stream.seek(1.1)).toRejectMatch(
+            matchFsError(
+              "'IOStream.seek' failed with error: Expected a [integer]."
+            )
+          );
         });
       });
 
       describe("seekFromEnd", () => {
-        it("should fail when invalid given invalid argument", async () => {
+        it("should fail when invalid given invalid argument", async (t) => {
           const stream = await fs.openFileIOStream(testFile, "CREATE");
+          t.defer(() => stream.close());
 
-          try {
-            await expect(stream.seekFromEnd(NaN as any)).toRejectMatch(
-              matchFsError(
-                "'IOStream.seekFromEnd' failed with error: Expected a [integer]."
-              )
-            );
-          } finally {
-            await stream.close();
-          }
+          await expect(stream.seekFromEnd(NaN as any)).toRejectMatch(
+            matchFsError(
+              "'IOStream.seekFromEnd' failed with error: Expected a [integer]."
+            )
+          );
         });
       });
 
       describe("seekFromStart", () => {
-        it("should fail when invalid given invalid argument", async () => {
+        it("should fail when invalid given invalid argument", async (t) => {
           const stream = await fs.openFileIOStream(testFile, "CREATE");
+          t.defer(() => stream.close());
 
-          try {
-            await expect(stream.seekFromStart({} as any)).toRejectMatch(
-              matchFsError(
-                "'IOStream.seekFromStart' failed with error: Expected a [integer]."
-              )
-            );
-          } finally {
-            await stream.close();
-          }
+          await expect(stream.seekFromStart({} as any)).toRejectMatch(
+            matchFsError(
+              "'IOStream.seekFromStart' failed with error: Expected a [integer]."
+            )
+          );
         });
       });
 
       describe("skip", () => {
-        it("should fail when invalid given invalid argument", async () => {
+        it("should fail when invalid given invalid argument", async (t) => {
           const stream = await fs.openFileIOStream(testFile, "CREATE");
+          t.defer(() => stream.close());
 
-          try {
-            await expect(stream.skip([1] as any)).toRejectMatch(
-              matchFsError(
-                "'IOStream.skip' failed with error: Expected a [positive integer]."
-              )
-            );
-          } finally {
-            await stream.close();
-          }
+          await expect(stream.skip([1] as any)).toRejectMatch(
+            matchFsError(
+              "'IOStream.skip' failed with error: Expected a [positive integer]."
+            )
+          );
         });
       });
 
       describe("write", () => {
-        it("should fail when invalid given invalid argument", async () => {
+        it("should fail when invalid given invalid argument", async (t) => {
           const stream = await fs.openFileIOStream(testFile, "CREATE");
+          t.defer(() => stream.close());
 
-          try {
-            await expect(stream.write([] as any)).toRejectMatch(
-              matchFsError(
-                "'IOStream.write' failed with error: Expected a [Uint8Array]."
-              )
-            );
-          } finally {
-            await stream.close();
-          }
+          await expect(stream.write([] as any)).toRejectMatch(
+            matchFsError(
+              "'IOStream.write' failed with error: Expected a [Uint8Array]."
+            )
+          );
         });
       });
 
       describe("read", () => {
-        it("should fail when invalid given invalid argument", async () => {
+        it("should fail when invalid given invalid argument", async (t) => {
           const stream = await fs.openFileIOStream(testFile, "CREATE");
+          t.defer(() => stream.close());
 
-          try {
-            await expect(stream.read(NaN)).toRejectMatch(
-              matchFsError(
-                "'IOStream.read' failed with error: Expected a [positive integer]."
-              )
-            );
-            await expect(stream.read(-1)).toRejectMatch(
-              matchFsError(
-                "'IOStream.read' failed with error: Expected a [positive integer]."
-              )
-            );
-            await expect(stream.read(1.1)).toRejectMatch(
-              matchFsError(
-                "'IOStream.read' failed with error: Expected a [positive integer]."
-              )
-            );
-          } finally {
-            await stream.close();
-          }
+          await expect(stream.read(NaN)).toRejectMatch(
+            matchFsError(
+              "'IOStream.read' failed with error: Expected a [positive integer]."
+            )
+          );
+          await expect(stream.read(-1)).toRejectMatch(
+            matchFsError(
+              "'IOStream.read' failed with error: Expected a [positive integer]."
+            )
+          );
+          await expect(stream.read(1.1)).toRejectMatch(
+            matchFsError(
+              "'IOStream.read' failed with error: Expected a [positive integer]."
+            )
+          );
         });
       });
 
       describe("readAll", () => {
-        it("should fail when invalid given invalid 'chunkSize' argument", async () => {
+        it("should fail when invalid given invalid 'chunkSize' argument", async (t) => {
           const stream = await fs.openFileIOStream(testFile, "CREATE");
+          t.defer(() => stream.close());
 
-          try {
-            await expect(
-              stream.readAll({ chunkSize: "" as any })
-            ).toRejectMatch(
-              matchFsError(
-                "'IOStream.readAll' failed with error: Expected a [positive integer]."
-              )
-            );
-            await expect(stream.readAll({ chunkSize: 0 })).toRejectMatch(
-              matchFsError(
-                "'IOStream.readAll' failed with error: Expected a [positive integer]."
-              )
-            );
-            await expect(
-              stream.readAll({ chunkSize: (0.1 + 0.2) * 10 })
-            ).toRejectMatch(
-              matchFsError(
-                "'IOStream.readAll' failed with error: Expected a [positive integer]."
-              )
-            );
-          } finally {
-            await stream.close();
-          }
+          await expect(stream.readAll({ chunkSize: "" as any })).toRejectMatch(
+            matchFsError(
+              "'IOStream.readAll' failed with error: Expected a [positive integer]."
+            )
+          );
+          await expect(stream.readAll({ chunkSize: 0 })).toRejectMatch(
+            matchFsError(
+              "'IOStream.readAll' failed with error: Expected a [positive integer]."
+            )
+          );
+          await expect(
+            stream.readAll({ chunkSize: (0.1 + 0.2) * 10 })
+          ).toRejectMatch(
+            matchFsError(
+              "'IOStream.readAll' failed with error: Expected a [positive integer]."
+            )
+          );
         });
       });
 
       describe("truncate", () => {
-        it("should fail when invalid given invalid argument", async () => {
+        it("should fail when invalid given invalid argument", async (t) => {
           const stream = await fs.openFileIOStream(testFile, "CREATE");
+          t.defer(() => stream.close());
 
-          try {
-            await expect(stream.truncate("1" as any)).toRejectMatch(
-              matchFsError(
-                "'IOStream.truncate' failed with error: Expected a [positive integer]."
-              )
-            );
-            await expect(stream.truncate(-1)).toRejectMatch(
-              matchFsError(
-                "'IOStream.truncate' failed with error: Expected a [positive integer]."
-              )
-            );
-            await expect(stream.truncate(1.1)).toRejectMatch(
-              matchFsError(
-                "'IOStream.truncate' failed with error: Expected a [positive integer]."
-              )
-            );
-          } finally {
-            await stream.close();
-          }
+          await expect(stream.truncate("1" as any)).toRejectMatch(
+            matchFsError(
+              "'IOStream.truncate' failed with error: Expected a [positive integer]."
+            )
+          );
+          await expect(stream.truncate(-1)).toRejectMatch(
+            matchFsError(
+              "'IOStream.truncate' failed with error: Expected a [positive integer]."
+            )
+          );
+          await expect(stream.truncate(1.1)).toRejectMatch(
+            matchFsError(
+              "'IOStream.truncate' failed with error: Expected a [positive integer]."
+            )
+          );
         });
       });
     });
