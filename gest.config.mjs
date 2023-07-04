@@ -1,9 +1,11 @@
 /** @type {import("@reactgjs/gest/config").ConfigGetter} */
 const getConfig = ({ vargs }) => {
+  const _CI_ = vargs.includes("--ci");
+
   return {
     testDir: "./__tests__",
     globals: {
-      _CI_: vargs.includes("--ci"),
+      _CI_,
     },
   };
 };
