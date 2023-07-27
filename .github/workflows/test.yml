@@ -20,9 +20,6 @@ jobs:
       - name: Install GJS
         run: pacman -Sy --noconfirm gjs
       - uses: actions/checkout@v3
-        name: Checkout to master
-        with:
-          ref: master
       - uses: actions/setup-node@v3
         name: Setup Node.js
         with:

@@ -19,6 +19,18 @@ export type FilePermission =
       };
     };
 
+export enum Permission {
+  OwnerRead = 0o400,
+  OwnerWrite = 0o200,
+  OwnerExecute = 0o100,
+  GroupRead = 0o40,
+  GroupWrite = 0o20,
+  GroupExecute = 0o10,
+  OthersRead = 0o4,
+  OthersWrite = 0o2,
+  OthersExecute = 0o1,
+}
+
 export const parseFilePermission = (permission: FilePermission) => {
   switch (typeof permission) {
     case "number":
@@ -47,39 +59,39 @@ export const parseFilePermission = (permission: FilePermission) => {
       let mode = 0;
 
       if (permission.owner.read) {
-        mode |= 0o400;
+        mode |= Permission.OwnerRead;
       }
 
       if (permission.owner.write) {
-        mode |= 0o200;
+        mode |= Permission.OwnerWrite;
       }
 
       if (permission.owner.execute) {
-        mode |= 0o100;
+        mode |= Permission.OwnerExecute;
       }
 
       if (permission.group.read) {
-        mode |= 0o40;
+        mode |= Permission.GroupRead;
       }
 
       if (permission.group.write) {
-        mode |= 0o20;
+        mode |= Permission.GroupWrite;
       }
 
       if (permission.group.execute) {
-        mode |= 0o10;
+        mode |= Permission.GroupExecute;
       }
 
       if (permission.others.read) {
-        mode |= 0o4;
+        mode |= Permission.OthersRead;
       }
 
       if (permission.others.write) {
-        mode |= 0o2;
+        mode |= Permission.OthersWrite;
       }
 
       if (permission.others.execute) {
-        mode |= 0o1;
+        mode |= Permission.OthersExecute;
       }
 
       return mode;

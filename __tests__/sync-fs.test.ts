@@ -8,7 +8,7 @@ import {
   match,
 } from "@reactgjs/gest";
 import GLib from "gi://GLib?version=2.0";
-import { Fs, SyncFs, SyncIOStream } from "../src/index";
+import { Fs, Permission, SyncFs, SyncIOStream } from "../src/index";
 import { matchFsError, matchMessageContaining } from "./shared";
 
 const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
@@ -37,7 +37,8 @@ amet, consectetur adipiscing elit. Donec at commodo purus.
 let _i = 1;
 const getNextTestFile = () => `test${_i++}`;
 
-const TMP_DIR_PATH = GLib.get_current_dir() + "/__tests__/sync-fs-test-tmp";
+const TMP_DIR_PATH =
+  GLib.get_current_dir() + "/__tests__/sync-fs-test-tmp";
 
 export default describe("Fs", () => {
   let testFile = "";
@@ -59,8 +60,8 @@ export default describe("Fs", () => {
 
     await Promise.all(
       files.map((f) =>
-        fs.deleteFile(f.filepath, { recursive: true, trash: true })
-      )
+        fs.deleteFile(f.filepath, { recursive: true, trash: !_CI_ }),
+      ),
     );
   });
 
@@ -106,7 +107,9 @@ export default describe("Fs", () => {
           },
           {
             filename: "executable",
-            filepath: match.stringContaining(testFile + "/executable"),
+            filepath: match.stringContaining(
+              testFile + "/executable",
+            ),
             isDirectory: false,
             isFile: true,
             isSymlink: false,
@@ -131,7 +134,9 @@ export default describe("Fs", () => {
           {
             filename: "link",
             filepath: match.stringContaining(testFile + "/link"),
-            symlinkTarget: match.stringContaining(testFile + "/txtfile"),
+            symlinkTarget: match.stringContaining(
+              testFile + "/txtfile",
+            ),
             isDirectory: false,
             isFile: false,
             isSymlink: true,
@@ -140,7 +145,7 @@ export default describe("Fs", () => {
             canRead: true,
             canWrite: true,
             canTrash: true,
-          }
+          },
         );
       });
     });
@@ -151,7 +156,10 @@ export default describe("Fs", () => {
         fs.makeDir(testFile);
 
         fs.writeTextFile(testFile + "/file.txt", "123");
-        fs.writeFile(testFile + "/binary", new Uint8Array([1, 2, 3, 4]));
+        fs.writeFile(
+          testFile + "/binary",
+          new Uint8Array([1, 2, 3, 4]),
+        );
         fs.writeTextFile(testFile + "/executable.sh", "#!/bin/bash");
         fs.makeDir(testFile + "/childDir");
         fs.makeLink(testFile + "/link", testFile + "/file.txt");
@@ -165,7 +173,7 @@ export default describe("Fs", () => {
           "binary",
           "executable.sh",
           "childDir",
-          "link"
+          "link",
         );
       });
     });
@@ -229,7 +237,9 @@ export default describe("Fs", () => {
         expect(linkInfo).toMatch({
           filename: "link",
           filepath: match.stringContaining(testFile + "/link"),
-          symlinkTarget: match.stringContaining(testFile + "/txtfile"),
+          symlinkTarget: match.stringContaining(
+            testFile + "/txtfile",
+          ),
           isDirectory: false,
           isFile: false,
           isSymlink: true,
@@ -292,7 +302,8 @@ export default describe("Fs", () => {
         const readData = fs.readTextFile(testFile);
         expect(readData).toEqual(data);
 
-        const newData = "bye\ncruel\nworld\nit was not nice knowing you";
+        const newData =
+          "bye\ncruel\nworld\nit was not nice knowing you";
         fs.writeTextFile(testFile, newData);
 
         const readNewData = fs.readTextFile(testFile);
@@ -310,7 +321,9 @@ export default describe("Fs", () => {
 
         const readData = fs.readFile(testFile);
 
-        expect(readData).toEqual(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]));
+        expect(readData).toEqual(
+          new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
+        );
       });
     });
 
@@ -389,7 +402,7 @@ export default describe("Fs", () => {
         });
       });
 
-      it("should delete recursively if the recursive option is set", () => {
+      it("should delete recursively if the recursive option is set", (t) => {
         fs.makeDir(testFile);
         fs.writeTextFile(testFile + "/file1", "");
         fs.writeTextFile(testFile + "/file2", "");
@@ -412,7 +425,7 @@ export default describe("Fs", () => {
           {
             filename: "dir1",
             isDirectory: true,
-          }
+          },
         );
 
         const dirFiles = fs.listDir(testFile + "/dir1");
@@ -425,7 +438,7 @@ export default describe("Fs", () => {
           {
             filename: "dir2",
             isDirectory: true,
-          }
+          },
         );
 
         const dir2Files = fs.listDir(testFile + "/dir1/dir2");
@@ -467,7 +480,9 @@ export default describe("Fs", () => {
 
         const info = fs.fileInfo(testFile + "-link");
         expect(info.isSymlink).toBe(true);
-        expect(info.symlinkTarget).toMatchRegex(new RegExp(`^.+?${testFile}$`));
+        expect(info.symlinkTarget).toMatchRegex(
+          new RegExp(`^.+?${testFile}$`),
+        );
       });
     });
 
@@ -477,19 +492,67 @@ export default describe("Fs", () => {
 
         fs.chmod(testFile, "rwxrwxrwx");
 
-        const info = fs.fileInfo(testFile);
+        const info1 = fs.fileInfo(testFile);
 
-        expect(info.canRead).toBe(true);
-        expect(info.canWrite).toBe(true);
-        expect(info.canExecute).toBe(true);
+        expect(info1.checkPermission(Permission.OwnerRead)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.OwnerWrite)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.OwnerExecute)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.GroupRead)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.GroupWrite)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.GroupExecute)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.OthersRead)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.OthersWrite)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.OthersExecute)).toBe(
+          true,
+        );
 
         fs.chmod(testFile, "---------");
 
         const info2 = fs.fileInfo(testFile);
 
-        expect(info2.canRead).toBe(false);
-        expect(info2.canWrite).toBe(false);
-        expect(info2.canExecute).toBe(false);
+        expect(info2.checkPermission(Permission.OwnerRead)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.OwnerWrite)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.OwnerExecute)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.GroupRead)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.GroupWrite)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.GroupExecute)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.OthersRead)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.OthersWrite)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.OthersExecute)).toBe(
+          false,
+        );
 
         fs.chmod(testFile, {
           group: {
@@ -507,9 +570,33 @@ export default describe("Fs", () => {
 
         const info3 = fs.fileInfo(testFile);
 
-        expect(info3.canRead).toBe(true);
-        expect(info3.canWrite).toBe(true);
-        expect(info3.canExecute).toBe(true);
+        expect(info3.checkPermission(Permission.OwnerRead)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.OwnerWrite)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.OwnerExecute)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.GroupRead)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.GroupWrite)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.GroupExecute)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.OthersRead)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.OthersWrite)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.OthersExecute)).toBe(
+          true,
+        );
       });
     });
 
@@ -563,42 +650,54 @@ export default describe("Fs", () => {
     describe("invalid options", () => {
       describe("listDir", () => {
         it("should fail when invalid option given: 'followSymlinks'", () => {
-          expect(() => fs.listDir(".", { followSymlinks: 1 as any })).toThrow();
+          expect(() =>
+            fs.listDir(".", { followSymlinks: 1 as any }),
+          ).toThrow();
         });
 
         it("should fail when invalid option given: 'attributes'", () => {
-          expect(() => fs.listDir(".", { attributes: 1 as any })).toThrow();
+          expect(() =>
+            fs.listDir(".", { attributes: 1 as any }),
+          ).toThrow();
         });
       });
 
       describe("fileInfo", () => {
         it("should fail when invalid option given: 'followSymlinks'", () => {
           expect(() =>
-            fs.fileInfo(".", { followSymlinks: 1 as any })
+            fs.fileInfo(".", { followSymlinks: 1 as any }),
           ).toThrow();
         });
 
         it("should fail when invalid option given: 'attributes'", () => {
-          expect(() => fs.fileInfo(".", { attributes: 1 as any })).toThrow();
-          expect(() => fs.fileInfo(".", { attributes: "*" as any })).toThrow();
+          expect(() =>
+            fs.fileInfo(".", { attributes: 1 as any }),
+          ).toThrow();
+          expect(() =>
+            fs.fileInfo(".", { attributes: "*" as any }),
+          ).toThrow();
         });
       });
 
       describe("readTextFile", () => {
         it("should fail when invalid option given: 'encoding'", () => {
-          expect(() => fs.readTextFile(".", { encoding: 1 as any })).toThrow();
           expect(() =>
-            fs.readTextFile(".", { encoding: "lul" as any })
+            fs.readTextFile(".", { encoding: 1 as any }),
+          ).toThrow();
+          expect(() =>
+            fs.readTextFile(".", { encoding: "lul" as any }),
           ).toThrow();
         });
       });
 
       describe("writeFile", () => {
         it("should fail when invalid content argument", () => {
-          expect(() => fs.writeFile(testFile, "123" as any)).toThrowMatch(
+          expect(() =>
+            fs.writeFile(testFile, "123" as any),
+          ).toThrowMatch(
             matchFsError(
-              "'writeFile' failed with error: Expected a [Uint8Array]."
-            )
+              "'writeFile' failed with error: Expected a [Uint8Array].",
+            ),
           );
         });
       });
@@ -606,53 +705,67 @@ export default describe("Fs", () => {
       describe("writeTextFile", () => {
         it("should fail when invalid option given: 'etag'", () => {
           expect(() =>
-            fs.writeTextFile(testFile, loremIpsum, { etag: 3 as any })
+            fs.writeTextFile(testFile, loremIpsum, {
+              etag: 3 as any,
+            }),
           ).toThrow();
         });
 
         it("should fail when invalid option given: 'makeBackup'", () => {
           expect(() =>
-            fs.writeTextFile(testFile, loremIpsum, { makeBackup: "yes" as any })
+            fs.writeTextFile(testFile, loremIpsum, {
+              makeBackup: "yes" as any,
+            }),
           ).toThrow();
         });
 
         it("should fail when invalid option given: 'private'", () => {
           expect(() =>
-            fs.writeTextFile(testFile, loremIpsum, { private: 1 as any })
+            fs.writeTextFile(testFile, loremIpsum, {
+              private: 1 as any,
+            }),
           ).toThrow();
         });
 
         it("should fail when invalid option given: 'replace'", () => {
           expect(() =>
-            fs.writeTextFile(testFile, loremIpsum, { replace: {} as any })
+            fs.writeTextFile(testFile, loremIpsum, {
+              replace: {} as any,
+            }),
           ).toThrow();
         });
 
         it("should fail when invalid content argument", () => {
-          expect(() => fs.writeTextFile(testFile, 123 as any)).toThrowMatch(
+          expect(() =>
+            fs.writeTextFile(testFile, 123 as any),
+          ).toThrowMatch(
             matchFsError(
-              "'writeTextFile' failed with error: Expected a [string]."
-            )
+              "'writeTextFile' failed with error: Expected a [string].",
+            ),
           );
         });
       });
 
       describe("appendFile", () => {
         it("should fail when invalid content argument", () => {
-          expect(() => fs.appendFile(testFile, "123" as any)).toThrowMatch(
+          expect(() =>
+            fs.appendFile(testFile, "123" as any),
+          ).toThrowMatch(
             matchFsError(
-              "'appendFile' failed with error: Expected a [Uint8Array]."
-            )
+              "'appendFile' failed with error: Expected a [Uint8Array].",
+            ),
           );
         });
       });
 
       describe("appendTextFile", () => {
         it("should fail when invalid content argument", () => {
-          expect(() => fs.appendTextFile(testFile, 123 as any)).toThrowMatch(
+          expect(() =>
+            fs.appendTextFile(testFile, 123 as any),
+          ).toThrowMatch(
             matchFsError(
-              "'appendTextFile' failed with error: Expected a [string]."
-            )
+              "'appendTextFile' failed with error: Expected a [string].",
+            ),
           );
         });
       });
@@ -662,7 +775,7 @@ export default describe("Fs", () => {
           expect(() =>
             fs.moveFile(testFile, testFile + "-ov", {
               onProgress: {} as any,
-            })
+            }),
           ).toThrow();
         });
 
@@ -670,7 +783,7 @@ export default describe("Fs", () => {
           expect(() =>
             fs.moveFile(testFile, testFile + "-ov", {
               allMetadata: [] as any,
-            })
+            }),
           ).toThrow();
         });
 
@@ -678,7 +791,7 @@ export default describe("Fs", () => {
           expect(() =>
             fs.moveFile(testFile, testFile + "-ov", {
               makeBackup: 0 as any,
-            })
+            }),
           ).toThrow();
         });
 
@@ -686,7 +799,7 @@ export default describe("Fs", () => {
           expect(() =>
             fs.moveFile(testFile, testFile + "-ov", {
               noFallbackForMove: (() => {}) as any,
-            })
+            }),
           ).toThrow();
         });
 
@@ -694,7 +807,7 @@ export default describe("Fs", () => {
           expect(() =>
             fs.moveFile(testFile, testFile + "-ov", {
               overwrite: "123" as any,
-            })
+            }),
           ).toThrow();
         });
 
@@ -702,7 +815,7 @@ export default describe("Fs", () => {
           expect(() =>
             fs.moveFile(testFile, testFile + "-ov", {
               targetDefaultPermissions: 1 as any,
-            })
+            }),
           ).toThrow();
         });
       });
@@ -710,31 +823,35 @@ export default describe("Fs", () => {
       describe("deleteFile", () => {
         it("should fail when invalid option given: 'recursive'", () => {
           expect(() =>
-            fs.deleteFile(testFile, { recursive: "yes" as any })
+            fs.deleteFile(testFile, { recursive: "yes" as any }),
           ).toThrow();
         });
 
         it("should fail when invalid option given: 'trash'", () => {
           expect(() =>
-            fs.deleteFile(testFile, { trash: "~/trashbin" as any })
+            fs.deleteFile(testFile, { trash: "~/trashbin" as any }),
           ).toThrow();
         });
       });
 
       describe("chown", () => {
         it("should fail when invalid uid argument", () => {
-          expect(() => fs.chown(testFile, "1000" as any, 1000)).toThrowMatch(
+          expect(() =>
+            fs.chown(testFile, "1000" as any, 1000),
+          ).toThrowMatch(
             matchFsError(
-              "'chown' failed with error: Expected a [number]. (uid)"
-            )
+              "'chown' failed with error: Expected a [number]. (uid)",
+            ),
           );
         });
 
         it("should fail when invalid gid argument", () => {
-          expect(() => fs.chown(testFile, 1000, "1000" as any)).toThrowMatch(
+          expect(() =>
+            fs.chown(testFile, 1000, "1000" as any),
+          ).toThrowMatch(
             matchFsError(
-              "'chown' failed with error: Expected a [number]. (gid)"
-            )
+              "'chown' failed with error: Expected a [number]. (gid)",
+            ),
           );
         });
       });
@@ -743,13 +860,13 @@ export default describe("Fs", () => {
         it("should fail when invalid mode argument", () => {
           expect(() => fs.chmod(testFile, "777" as any)).toThrowMatch(
             matchFsError(
-              "'chmod' failed with error: Expected a [string] detailing permissions."
-            )
+              "'chmod' failed with error: Expected a [string] detailing permissions.",
+            ),
           );
           expect(() => fs.chmod(testFile, {} as any)).toThrowMatch(
             matchFsError(
-              "'chmod' failed with error: Expected a [object] detailing permissions."
-            )
+              "'chmod' failed with error: Expected a [object] detailing permissions.",
+            ),
           );
           expect(() =>
             fs.chmod(testFile, {
@@ -768,11 +885,11 @@ export default describe("Fs", () => {
                 read: true,
                 write: 1 as any,
               },
-            })
+            }),
           ).toThrowMatch(
             matchFsError(
-              "'chmod' failed with error: Expected a [object] detailing permissions."
-            )
+              "'chmod' failed with error: Expected a [object] detailing permissions.",
+            ),
           );
         });
       });
@@ -784,9 +901,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'listDir' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -795,9 +912,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'listFilenames' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -806,9 +923,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'fileInfo' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -817,9 +934,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'readFile' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -828,31 +945,35 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'readTextFile' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
       it("moveFile", () => {
-        expect(() => fs.moveFile(testFile, testFile + "-ov")).toThrowMatch(
+        expect(() =>
+          fs.moveFile(testFile, testFile + "-ov"),
+        ).toThrowMatch(
           matchFsError(
             matchMessageContaining(
               "'moveFile' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
       it("copyFile", () => {
-        expect(() => fs.copyFile(testFile, testFile + "-ov")).toThrowMatch(
+        expect(() =>
+          fs.copyFile(testFile, testFile + "-ov"),
+        ).toThrowMatch(
           matchFsError(
             matchMessageContaining(
               "'copyFile' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -861,9 +982,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'deleteFile' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -872,9 +993,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'chmod' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -883,9 +1004,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'chown' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
     });

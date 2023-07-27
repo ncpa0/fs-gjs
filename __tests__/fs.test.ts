@@ -9,7 +9,7 @@ import {
   skip,
 } from "@reactgjs/gest";
 import GLib from "gi://GLib?version=2.0";
-import { Fs, IOStream } from "../src/index";
+import { Fs, IOStream, Permission } from "../src/index";
 import {
   compareBytes,
   lns,
@@ -47,7 +47,8 @@ amet, consectetur adipiscing elit. Donec at commodo purus.
 let _i = 1;
 const getNextTestFile = () => `test${_i++}`;
 
-const TMP_DIR_PATH = GLib.get_current_dir() + "/__tests__/fs-test-tmp";
+const TMP_DIR_PATH =
+  GLib.get_current_dir() + "/__tests__/fs-test-tmp";
 
 export default describe("Fs", () => {
   let testFile = "";
@@ -69,8 +70,8 @@ export default describe("Fs", () => {
 
     await Promise.all(
       files.map((f) =>
-        fs.deleteFile(f.filepath, { recursive: true, trash: true })
-      )
+        fs.deleteFile(f.filepath, { recursive: true, trash: !_CI_ }),
+      ),
     );
   });
 
@@ -92,10 +93,17 @@ export default describe("Fs", () => {
         await fs.makeDir(testFile);
 
         await fs.writeTextFile(testFile + "/txtfile", "123");
-        await fs.writeTextFile(testFile + "/executable", "#!/bin/bash");
+        await fs.writeTextFile(
+          testFile + "/executable",
+          "#!/bin/bash",
+        );
         await fs.chmod(testFile + "/executable", "rwxr-xr-x");
         await fs.makeDir(testFile + "/childDir");
-        await lns(testFile + "/link", testFile + "/txtfile", TMP_DIR_PATH);
+        await lns(
+          testFile + "/link",
+          testFile + "/txtfile",
+          TMP_DIR_PATH,
+        );
 
         // test
         const files = await fs.listDir(testFile);
@@ -116,7 +124,9 @@ export default describe("Fs", () => {
           },
           {
             filename: "executable",
-            filepath: match.stringContaining(testFile + "/executable"),
+            filepath: match.stringContaining(
+              testFile + "/executable",
+            ),
             isDirectory: false,
             isFile: true,
             isSymlink: false,
@@ -141,7 +151,9 @@ export default describe("Fs", () => {
           {
             filename: "link",
             filepath: match.stringContaining(testFile + "/link"),
-            symlinkTarget: match.stringContaining(testFile + "/txtfile"),
+            symlinkTarget: match.stringContaining(
+              testFile + "/txtfile",
+            ),
             isDirectory: false,
             isFile: false,
             isSymlink: true,
@@ -150,7 +162,7 @@ export default describe("Fs", () => {
             canRead: true,
             canWrite: true,
             canTrash: true,
-          }
+          },
         );
       });
 
@@ -159,10 +171,17 @@ export default describe("Fs", () => {
         await fs.makeDir(testFile);
 
         await fs.writeTextFile(testFile + "/txtfile", "123");
-        await fs.writeTextFile(testFile + "/executable", "#!/bin/bash");
+        await fs.writeTextFile(
+          testFile + "/executable",
+          "#!/bin/bash",
+        );
         await fs.chmod(testFile + "/executable", "rwxr-xr-x");
         await fs.makeDir(testFile + "/childDir");
-        await lns(testFile + "/link", testFile + "/txtfile", TMP_DIR_PATH);
+        await lns(
+          testFile + "/link",
+          testFile + "/txtfile",
+          TMP_DIR_PATH,
+        );
 
         // test
         const files = await fs.listDir(testFile, {
@@ -187,7 +206,9 @@ export default describe("Fs", () => {
           },
           {
             filename: "executable",
-            filepath: match.stringContaining(testFile + "/executable"),
+            filepath: match.stringContaining(
+              testFile + "/executable",
+            ),
             isDirectory: false,
             isFile: true,
             isSymlink: false,
@@ -212,7 +233,9 @@ export default describe("Fs", () => {
           {
             filename: "link",
             filepath: match.stringContaining(testFile + "/link"),
-            symlinkTarget: match.stringContaining(testFile + "/txtfile"),
+            symlinkTarget: match.stringContaining(
+              testFile + "/txtfile",
+            ),
             isDirectory: false,
             isFile: false,
             isSymlink: true,
@@ -221,7 +244,7 @@ export default describe("Fs", () => {
             canRead: true,
             canWrite: true,
             canTrash: true,
-          }
+          },
         );
       });
     });
@@ -232,13 +255,25 @@ export default describe("Fs", () => {
         await fs.makeDir(testFile);
 
         await fs.writeTextFile(testFile + "/file.txt", "123");
-        await fs.writeFile(testFile + "/binary", new Uint8Array([1, 2, 3, 4]));
-        await fs.writeTextFile(testFile + "/executable.sh", "#!/bin/bash");
+        await fs.writeFile(
+          testFile + "/binary",
+          new Uint8Array([1, 2, 3, 4]),
+        );
+        await fs.writeTextFile(
+          testFile + "/executable.sh",
+          "#!/bin/bash",
+        );
         await fs.makeDir(testFile + "/childDir");
-        await lns(testFile + "/link", testFile + "/file.txt", TMP_DIR_PATH);
+        await lns(
+          testFile + "/link",
+          testFile + "/file.txt",
+          TMP_DIR_PATH,
+        );
 
         // test
-        const files = await fs.listFilenames(testFile, { batchSize: 2 });
+        const files = await fs.listFilenames(testFile, {
+          batchSize: 2,
+        });
 
         expect(files.length).toBe(5);
         expect(files).toContainOnly(
@@ -246,7 +281,7 @@ export default describe("Fs", () => {
           "binary",
           "executable.sh",
           "childDir",
-          "link"
+          "link",
         );
       });
     });
@@ -257,15 +292,26 @@ export default describe("Fs", () => {
         await fs.makeDir(testFile);
 
         await fs.writeTextFile(testFile + "/txtfile", "123");
-        await fs.writeTextFile(testFile + "/executable", "#!/bin/bash");
+        await fs.writeTextFile(
+          testFile + "/executable",
+          "#!/bin/bash",
+        );
         await fs.chmod(testFile + "/executable", "rwxr-xr-x");
         await fs.makeDir(testFile + "/childDir");
-        await lns(testFile + "/link", testFile + "/txtfile", TMP_DIR_PATH);
+        await lns(
+          testFile + "/link",
+          testFile + "/txtfile",
+          TMP_DIR_PATH,
+        );
 
         // test
         const txtfileInfo = await fs.fileInfo(testFile + "/txtfile");
-        const executableInfo = await fs.fileInfo(testFile + "/executable");
-        const childDirInfo = await fs.fileInfo(testFile + "/childDir");
+        const executableInfo = await fs.fileInfo(
+          testFile + "/executable",
+        );
+        const childDirInfo = await fs.fileInfo(
+          testFile + "/childDir",
+        );
         const linkInfo = await fs.fileInfo(testFile + "/link");
 
         expect(txtfileInfo).toMatch({
@@ -310,7 +356,9 @@ export default describe("Fs", () => {
         expect(linkInfo).toMatch({
           filename: "link",
           filepath: match.stringContaining(testFile + "/link"),
-          symlinkTarget: match.stringContaining(testFile + "/txtfile"),
+          symlinkTarget: match.stringContaining(
+            testFile + "/txtfile",
+          ),
           isDirectory: false,
           isFile: false,
           isSymlink: true,
@@ -394,7 +442,8 @@ export default describe("Fs", () => {
         const readData = await fs.readTextFile(testFile);
         expect(readData).toEqual(data);
 
-        const newData = "bye\ncruel\nworld\nit was not nice knowing you";
+        const newData =
+          "bye\ncruel\nworld\nit was not nice knowing you";
         await fs.writeTextFile(testFile, newData);
 
         const readNewData = await fs.readTextFile(testFile);
@@ -412,7 +461,9 @@ export default describe("Fs", () => {
 
         const readData = await fs.readFile(testFile);
 
-        expect(readData).toEqual(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]));
+        expect(readData).toEqual(
+          new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
+        );
       });
     });
 
@@ -453,7 +504,10 @@ export default describe("Fs", () => {
       it("should work with flag options", async () => {
         await fs.writeTextFile(testFile, loremIpsum);
 
-        await fs.writeFile(testFile + "-ov", new Uint8Array([1, 2, 3, 4]));
+        await fs.writeFile(
+          testFile + "-ov",
+          new Uint8Array([1, 2, 3, 4]),
+        );
 
         await fs.moveFile(testFile, testFile + "-ov", {
           allMetadata: true,
@@ -480,7 +534,9 @@ export default describe("Fs", () => {
         expect(text).toEqual(loremIpsum);
 
         const backup = await fs.readFile(testFile + "-ov~");
-        expect(compareBytes(backup, new Uint8Array([1, 2, 3, 4]))).toBe(true);
+        expect(
+          compareBytes(backup, new Uint8Array([1, 2, 3, 4])),
+        ).toBe(true);
       });
     });
 
@@ -547,7 +603,7 @@ export default describe("Fs", () => {
           {
             filename: "dir1",
             isDirectory: true,
-          }
+          },
         );
 
         const dirFiles = await fs.listDir(testFile + "/dir1");
@@ -560,7 +616,7 @@ export default describe("Fs", () => {
           {
             filename: "dir2",
             isDirectory: true,
-          }
+          },
         );
 
         const dir2Files = await fs.listDir(testFile + "/dir1/dir2");
@@ -595,9 +651,9 @@ export default describe("Fs", () => {
     describe("makeLink", () => {
       /**
        * CI workflow runs on Ubuntu latest, for some reason,
-       * Gio.File.make_symbolic_link_async is not available on
-       * the version of GJS+GIO that is shipped with that image
-       * so we have to skip this test.
+       * Gio.File.make_symbolic_link_async is not available on the
+       * version of GJS+GIO that is shipped with that image so we have
+       * to skip this test.
        */
       const itOnlyLocal = _CI_ ? skip : it;
 
@@ -610,7 +666,9 @@ export default describe("Fs", () => {
 
         const info = await fs.fileInfo(testFile + "-link");
         expect(info.isSymlink).toBe(true);
-        expect(info.symlinkTarget).toMatchRegex(new RegExp(`^.+?${testFile}$`));
+        expect(info.symlinkTarget).toMatchRegex(
+          new RegExp(`^.+?${testFile}$`),
+        );
       });
     });
 
@@ -620,19 +678,67 @@ export default describe("Fs", () => {
 
         await fs.chmod(testFile, "rwxrwxrwx");
 
-        const info = await fs.fileInfo(testFile);
+        const info1 = await fs.fileInfo(testFile);
 
-        expect(info.canRead).toBe(true);
-        expect(info.canWrite).toBe(true);
-        expect(info.canExecute).toBe(true);
+        expect(info1.checkPermission(Permission.OwnerRead)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.OwnerWrite)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.OwnerExecute)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.GroupRead)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.GroupWrite)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.GroupExecute)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.OthersRead)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.OthersWrite)).toBe(
+          true,
+        );
+        expect(info1.checkPermission(Permission.OthersExecute)).toBe(
+          true,
+        );
 
         await fs.chmod(testFile, "---------");
 
         const info2 = await fs.fileInfo(testFile);
 
-        expect(info2.canRead).toBe(false);
-        expect(info2.canWrite).toBe(false);
-        expect(info2.canExecute).toBe(false);
+        expect(info2.checkPermission(Permission.OwnerRead)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.OwnerWrite)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.OwnerExecute)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.GroupRead)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.GroupWrite)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.GroupExecute)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.OthersRead)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.OthersWrite)).toBe(
+          false,
+        );
+        expect(info2.checkPermission(Permission.OthersExecute)).toBe(
+          false,
+        );
 
         await fs.chmod(testFile, {
           group: {
@@ -650,9 +756,33 @@ export default describe("Fs", () => {
 
         const info3 = await fs.fileInfo(testFile);
 
-        expect(info3.canRead).toBe(true);
-        expect(info3.canWrite).toBe(true);
-        expect(info3.canExecute).toBe(true);
+        expect(info3.checkPermission(Permission.OwnerRead)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.OwnerWrite)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.OwnerExecute)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.GroupRead)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.GroupWrite)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.GroupExecute)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.OthersRead)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.OthersWrite)).toBe(
+          true,
+        );
+        expect(info3.checkPermission(Permission.OthersExecute)).toBe(
+          true,
+        );
       });
     });
 
@@ -701,56 +831,62 @@ export default describe("Fs", () => {
       describe("listDir", () => {
         it("should fail when invalid option given: 'followSymlinks'", async () => {
           await expect(
-            fs.listDir(".", { followSymlinks: 1 as any })
+            fs.listDir(".", { followSymlinks: 1 as any }),
           ).toRejectMatch(
             matchFsError(
-              "'listDir' failed with error: Invalid option 'followSymlinks' - Expected a [boolean]."
-            )
+              "'listDir' failed with error: Invalid option 'followSymlinks' - Expected a [boolean].",
+            ),
           );
         });
 
         it("should fail when invalid option given: 'attributes'", async () => {
-          await expect(fs.listDir(".", { attributes: 1 as any })).toRejectMatch(
+          await expect(
+            fs.listDir(".", { attributes: 1 as any }),
+          ).toRejectMatch(
             matchFsError(
-              "'listDir' failed with error: Invalid option 'attributes' - Expected a [array]."
-            )
+              "'listDir' failed with error: Invalid option 'attributes' - Expected a [array].",
+            ),
           );
         });
 
         it("should fail when invalid option given: 'batchSize'", async () => {
           await expect(
-            fs.listDir(".", { batchSize: "12" as any })
+            fs.listDir(".", { batchSize: "12" as any }),
           ).toRejectMatch(
             matchFsError(
-              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [number]."
-            )
-          );
-          await expect(fs.listDir(".", { batchSize: NaN })).toRejectMatch(
-            matchFsError(
-              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [number]."
-            )
-          );
-          await expect(fs.listDir(".", { batchSize: -1 })).toRejectMatch(
-            matchFsError(
-              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [positive integer]."
-            )
+              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [number].",
+            ),
           );
           await expect(
-            fs.listDir(".", { batchSize: 1.000000000001 })
+            fs.listDir(".", { batchSize: NaN }),
           ).toRejectMatch(
             matchFsError(
-              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [positive integer]."
-            )
+              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [number].",
+            ),
+          );
+          await expect(
+            fs.listDir(".", { batchSize: -1 }),
+          ).toRejectMatch(
+            matchFsError(
+              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [positive integer].",
+            ),
+          );
+          await expect(
+            fs.listDir(".", { batchSize: 1.000000000001 }),
+          ).toRejectMatch(
+            matchFsError(
+              "'listDir' failed with error: Invalid option 'batchSize' - Expected a [positive integer].",
+            ),
           );
         });
 
         it("should fail when invalid option given: 'ioPriority'", async () => {
           await expect(
-            fs.listDir(".", { ioPriority: "" as any })
+            fs.listDir(".", { ioPriority: "" as any }),
           ).toRejectMatch(
             matchFsError(
-              "'listDir' failed with error: Invalid option 'ioPriority' - Expected a [number]."
-            )
+              "'listDir' failed with error: Invalid option 'ioPriority' - Expected a [number].",
+            ),
           );
         });
       });
@@ -758,35 +894,35 @@ export default describe("Fs", () => {
       describe("fileInfo", () => {
         it("should fail when invalid option given: 'followSymlinks'", async () => {
           await expect(
-            fs.fileInfo(".", { followSymlinks: 1 as any })
+            fs.fileInfo(".", { followSymlinks: 1 as any }),
           ).toRejectMatch(
             matchFsError(
-              "'fileInfo' failed with error: Invalid option 'followSymlinks' - Expected a [boolean]."
-            )
+              "'fileInfo' failed with error: Invalid option 'followSymlinks' - Expected a [boolean].",
+            ),
           );
         });
 
         it("should fail when invalid option given: 'attributes'", async () => {
           await expect(
-            fs.fileInfo(".", { attributes: 1 as any })
+            fs.fileInfo(".", { attributes: 1 as any }),
           ).toRejectMatch(
             matchFsError(
-              "'fileInfo' failed with error: Invalid option 'attributes' - Expected a [array]."
-            )
+              "'fileInfo' failed with error: Invalid option 'attributes' - Expected a [array].",
+            ),
           );
           await expect(
-            fs.fileInfo(".", { attributes: "*" as any })
+            fs.fileInfo(".", { attributes: "*" as any }),
           ).toRejectMatch(
             matchFsError(
-              "'fileInfo' failed with error: Invalid option 'attributes' - Expected a [array]."
-            )
+              "'fileInfo' failed with error: Invalid option 'attributes' - Expected a [array].",
+            ),
           );
           await expect(
-            fs.fileInfo(".", { attributes: [1] as any })
+            fs.fileInfo(".", { attributes: [1] as any }),
           ).toRejectMatch(
             matchFsError(
-              "'fileInfo' failed with error: Invalid option 'attributes[0]' - Expected a [string]."
-            )
+              "'fileInfo' failed with error: Invalid option 'attributes[0]' - Expected a [string].",
+            ),
           );
         });
       });
@@ -796,28 +932,30 @@ export default describe("Fs", () => {
           await fs.writeTextFile(testFile, "hello");
 
           await expect(
-            fs.readTextFile(testFile, { encoding: 1 as any })
+            fs.readTextFile(testFile, { encoding: 1 as any }),
           ).toRejectMatch(
             matchFsError(
-              "'readTextFile' failed with error: Invalid option 'encoding' - Expected a [string]."
-            )
+              "'readTextFile' failed with error: Invalid option 'encoding' - Expected a [string].",
+            ),
           );
           await expect(
-            fs.readTextFile(testFile, { encoding: "lul" as any })
+            fs.readTextFile(testFile, { encoding: "lul" as any }),
           ).toRejectMatch(
             matchFsError(
-              "'readTextFile' failed with error: Invalid option 'encoding' - Expected a [valid encoding]."
-            )
+              "'readTextFile' failed with error: Invalid option 'encoding' - Expected a [valid encoding].",
+            ),
           );
         });
       });
 
       describe("writeFile", () => {
         it("should fail when invalid content argument", async () => {
-          await expect(fs.writeFile(testFile, "123" as any)).toRejectMatch(
+          await expect(
+            fs.writeFile(testFile, "123" as any),
+          ).toRejectMatch(
             matchFsError(
-              "'writeFile' failed with error: Expected a [Uint8Array]."
-            )
+              "'writeFile' failed with error: Expected a [Uint8Array].",
+            ),
           );
         });
       });
@@ -825,69 +963,83 @@ export default describe("Fs", () => {
       describe("writeTextFile", () => {
         it("should fail when invalid option given: 'etag'", async () => {
           await expect(
-            fs.writeTextFile(testFile, loremIpsum, { etag: 3 as any })
+            fs.writeTextFile(testFile, loremIpsum, {
+              etag: 3 as any,
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'writeTextFile' failed with error: Invalid option 'etag' - Expected a [string]."
-            )
+              "'writeTextFile' failed with error: Invalid option 'etag' - Expected a [string].",
+            ),
           );
         });
 
         it("should fail when invalid option given: 'makeBackup'", async () => {
           await expect(
-            fs.writeTextFile(testFile, loremIpsum, { makeBackup: "yes" as any })
+            fs.writeTextFile(testFile, loremIpsum, {
+              makeBackup: "yes" as any,
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'writeTextFile' failed with error: Invalid option 'makeBackup' - Expected a [boolean]."
-            )
+              "'writeTextFile' failed with error: Invalid option 'makeBackup' - Expected a [boolean].",
+            ),
           );
         });
 
         it("should fail when invalid option given: 'private'", async () => {
           await expect(
-            fs.writeTextFile(testFile, loremIpsum, { private: 1 as any })
+            fs.writeTextFile(testFile, loremIpsum, {
+              private: 1 as any,
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'writeTextFile' failed with error: Invalid option 'private' - Expected a [boolean]."
-            )
+              "'writeTextFile' failed with error: Invalid option 'private' - Expected a [boolean].",
+            ),
           );
         });
 
         it("should fail when invalid option given: 'replace'", async () => {
           await expect(
-            fs.writeTextFile(testFile, loremIpsum, { replace: {} as any })
+            fs.writeTextFile(testFile, loremIpsum, {
+              replace: {} as any,
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'writeTextFile' failed with error: Invalid option 'replace' - Expected a [boolean]."
-            )
+              "'writeTextFile' failed with error: Invalid option 'replace' - Expected a [boolean].",
+            ),
           );
         });
 
         it("should fail when invalid content argument", async () => {
-          await expect(fs.writeTextFile(testFile, 123 as any)).toRejectMatch(
+          await expect(
+            fs.writeTextFile(testFile, 123 as any),
+          ).toRejectMatch(
             matchFsError(
-              "'writeTextFile' failed with error: Expected a [string]."
-            )
+              "'writeTextFile' failed with error: Expected a [string].",
+            ),
           );
         });
       });
 
       describe("appendFile", () => {
         it("should fail when invalid content argument", async () => {
-          await expect(fs.appendFile(testFile, "123" as any)).toRejectMatch(
+          await expect(
+            fs.appendFile(testFile, "123" as any),
+          ).toRejectMatch(
             matchFsError(
-              "'appendFile' failed with error: Expected a [Uint8Array]."
-            )
+              "'appendFile' failed with error: Expected a [Uint8Array].",
+            ),
           );
         });
       });
 
       describe("appendTextFile", () => {
         it("should fail when invalid content argument", async () => {
-          await expect(fs.appendTextFile(testFile, 123 as any)).toRejectMatch(
+          await expect(
+            fs.appendTextFile(testFile, 123 as any),
+          ).toRejectMatch(
             matchFsError(
-              "'appendTextFile' failed with error: Expected a [string]."
-            )
+              "'appendTextFile' failed with error: Expected a [string].",
+            ),
           );
         });
       });
@@ -897,11 +1049,11 @@ export default describe("Fs", () => {
           await expect(
             fs.moveFile(testFile, testFile + "-ov", {
               onProgress: {} as any,
-            })
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'moveFile' failed with error: Invalid option 'onProgress' - Expected a [function]."
-            )
+              "'moveFile' failed with error: Invalid option 'onProgress' - Expected a [function].",
+            ),
           );
         });
 
@@ -909,11 +1061,11 @@ export default describe("Fs", () => {
           await expect(
             fs.moveFile(testFile, testFile + "-ov", {
               allMetadata: [] as any,
-            })
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'moveFile' failed with error: Invalid option 'allMetadata' - Expected a [boolean]."
-            )
+              "'moveFile' failed with error: Invalid option 'allMetadata' - Expected a [boolean].",
+            ),
           );
         });
 
@@ -921,11 +1073,11 @@ export default describe("Fs", () => {
           await expect(
             fs.moveFile(testFile, testFile + "-ov", {
               makeBackup: 0 as any,
-            })
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'moveFile' failed with error: Invalid option 'makeBackup' - Expected a [boolean]."
-            )
+              "'moveFile' failed with error: Invalid option 'makeBackup' - Expected a [boolean].",
+            ),
           );
         });
 
@@ -933,11 +1085,11 @@ export default describe("Fs", () => {
           await expect(
             fs.moveFile(testFile, testFile + "-ov", {
               noFallbackForMove: (() => {}) as any,
-            })
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'moveFile' failed with error: Invalid option 'noFallbackForMove' - Expected a [boolean]."
-            )
+              "'moveFile' failed with error: Invalid option 'noFallbackForMove' - Expected a [boolean].",
+            ),
           );
         });
 
@@ -945,11 +1097,11 @@ export default describe("Fs", () => {
           await expect(
             fs.moveFile(testFile, testFile + "-ov", {
               overwrite: "123" as any,
-            })
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'moveFile' failed with error: Invalid option 'overwrite' - Expected a [boolean]."
-            )
+              "'moveFile' failed with error: Invalid option 'overwrite' - Expected a [boolean].",
+            ),
           );
         });
 
@@ -957,11 +1109,11 @@ export default describe("Fs", () => {
           await expect(
             fs.moveFile(testFile, testFile + "-ov", {
               targetDefaultPermissions: 1 as any,
-            })
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'moveFile' failed with error: Invalid option 'targetDefaultPermissions' - Expected a [boolean]."
-            )
+              "'moveFile' failed with error: Invalid option 'targetDefaultPermissions' - Expected a [boolean].",
+            ),
           );
         });
       });
@@ -969,54 +1121,60 @@ export default describe("Fs", () => {
       describe("deleteFile", () => {
         it("should fail when invalid option given: 'recursive'", async () => {
           await expect(
-            fs.deleteFile(testFile, { recursive: "yes" as any })
+            fs.deleteFile(testFile, { recursive: "yes" as any }),
           ).toRejectMatch(
             matchFsError(
-              "'deleteFile' failed with error: Invalid option 'recursive' - Expected a [boolean]."
-            )
+              "'deleteFile' failed with error: Invalid option 'recursive' - Expected a [boolean].",
+            ),
           );
         });
 
         it("should fail when invalid option given: 'trash'", async () => {
           await expect(
-            fs.deleteFile(testFile, { trash: "~/trashbin" as any })
+            fs.deleteFile(testFile, { trash: "~/trashbin" as any }),
           ).toRejectMatch(
             matchFsError(
-              "'deleteFile' failed with error: Invalid option 'trash' - Expected a [boolean]."
-            )
+              "'deleteFile' failed with error: Invalid option 'trash' - Expected a [boolean].",
+            ),
           );
         });
       });
 
       describe("chown", () => {
         it("should fail when invalid uid argument", async () => {
-          await expect(fs.chown(testFile, "1000" as any, 1000)).toRejectMatch(
+          await expect(
+            fs.chown(testFile, "1000" as any, 1000),
+          ).toRejectMatch(
             matchFsError(
-              "'chown' failed with error: Expected a [number]. (uid)"
-            )
+              "'chown' failed with error: Expected a [number]. (uid)",
+            ),
           );
         });
 
         it("should fail when invalid gid argument", async () => {
-          await expect(fs.chown(testFile, 1000, "1000" as any)).toRejectMatch(
+          await expect(
+            fs.chown(testFile, 1000, "1000" as any),
+          ).toRejectMatch(
             matchFsError(
-              "'chown' failed with error: Expected a [number]. (gid)"
-            )
+              "'chown' failed with error: Expected a [number]. (gid)",
+            ),
           );
         });
       });
 
       describe("chmod", () => {
         it("should fail when invalid mode argument", async () => {
-          await expect(fs.chmod(testFile, "777" as any)).toRejectMatch(
+          await expect(
+            fs.chmod(testFile, "777" as any),
+          ).toRejectMatch(
             matchFsError(
-              "'chmod' failed with error: Expected a [string] detailing permissions."
-            )
+              "'chmod' failed with error: Expected a [string] detailing permissions.",
+            ),
           );
           await expect(fs.chmod(testFile, {} as any)).toRejectMatch(
             matchFsError(
-              "'chmod' failed with error: Expected a [object] detailing permissions."
-            )
+              "'chmod' failed with error: Expected a [object] detailing permissions.",
+            ),
           );
           await expect(
             fs.chmod(testFile, {
@@ -1035,11 +1193,11 @@ export default describe("Fs", () => {
                 read: true,
                 write: 1 as any,
               },
-            })
+            }),
           ).toRejectMatch(
             matchFsError(
-              "'chmod' failed with error: Expected a [object] detailing permissions."
-            )
+              "'chmod' failed with error: Expected a [object] detailing permissions.",
+            ),
           );
         });
       });
@@ -1051,9 +1209,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'listDir' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -1062,9 +1220,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'listFilenames' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -1073,9 +1231,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'fileInfo' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -1084,9 +1242,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'readFile' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -1095,31 +1253,35 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'readTextFile' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
       it("moveFile", async () => {
-        await expect(fs.moveFile(testFile, testFile + "-ov")).toRejectMatch(
+        await expect(
+          fs.moveFile(testFile, testFile + "-ov"),
+        ).toRejectMatch(
           matchFsError(
             matchMessageContaining(
               "'moveFile' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
       it("copyFile", async () => {
-        await expect(fs.copyFile(testFile, testFile + "-ov")).toRejectMatch(
+        await expect(
+          fs.copyFile(testFile, testFile + "-ov"),
+        ).toRejectMatch(
           matchFsError(
             matchMessageContaining(
               "'copyFile' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -1128,9 +1290,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'deleteFile' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -1139,9 +1301,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'chmod' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
 
@@ -1150,9 +1312,9 @@ export default describe("Fs", () => {
           matchFsError(
             matchMessageContaining(
               "'chown' failed with error:",
-              "No such file or directory"
-            )
-          )
+              "No such file or directory",
+            ),
+          ),
         );
       });
     });

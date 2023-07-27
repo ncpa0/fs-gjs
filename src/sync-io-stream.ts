@@ -290,7 +290,7 @@ class SyncIOStream {
       throw new FsError("Failed to read from stream.");
     }
 
-    return bytes.unref_to_array();
+    return bytes.toArray();
   }
 
   /**
@@ -315,7 +315,7 @@ class SyncIOStream {
         throw new FsError("Failed to read from stream.");
       }
 
-      const byteArray = nextBytes.unref_to_array();
+      const byteArray = nextBytes.toArray();
 
       if (byteArray!.byteLength === 0) {
         break;
