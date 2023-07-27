@@ -737,7 +737,7 @@ class Fs {
           p.asyncCallback((_, result: Gio.AsyncResult) => {
             const [bytes] = file.load_bytes_finish(result);
             if (bytes != null) {
-              p.resolve(bytes.unref_to_array());
+              p.resolve(bytes.toArray());
             } else {
               p.reject(
                 new FsError(
@@ -1357,20 +1357,20 @@ class Fs {
 
 export { Fs };
 export type {
+  AppendFileOptions,
+  AppendTextFileOptions,
+  ChmodOptions,
+  ChownOptions,
+  CopyFileOptions,
+  DeleteFileOptions,
   FileExistsOptions,
-  ListDirOptions,
   FileInfoOptions,
+  ListDirOptions,
+  MakeDirOptions,
+  MakeLinkOptions,
+  MoveFileOptions,
   ReadFileOptions,
   ReadTextFileOptions,
   WriteFileOptions,
   WriteTextFileOptions,
-  AppendFileOptions,
-  AppendTextFileOptions,
-  MoveFileOptions,
-  CopyFileOptions,
-  DeleteFileOptions,
-  MakeDirOptions,
-  MakeLinkOptions,
-  ChmodOptions,
-  ChownOptions,
 };

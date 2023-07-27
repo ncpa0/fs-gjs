@@ -570,7 +570,7 @@ class SyncFs {
     const [bytes] = file.load_bytes(null);
 
     if (bytes != null) {
-      return bytes.unref_to_array();
+      return bytes.toArray();
     } else {
       throw new FsError(`Failed to read file: ${file.get_path()}`);
     }
@@ -972,17 +972,17 @@ class SyncFs {
 
 export { SyncFs };
 export type {
-  SyncListDirOptions,
+  SyncAppendFileOptions,
+  SyncAppendTextFileOptions,
+  SyncChmodOptions,
+  SyncChownOptions,
+  SyncCopyFileOptions,
+  SyncDeleteFileOptions,
   SyncFileInfoOptions,
+  SyncListDirOptions,
+  SyncMoveFileOptions,
   SyncReadFileOptions,
   SyncReadTextFileOptions,
   SyncWriteFileOptions,
   SyncWriteTextFileOptions,
-  SyncAppendFileOptions,
-  SyncAppendTextFileOptions,
-  SyncMoveFileOptions,
-  SyncCopyFileOptions,
-  SyncDeleteFileOptions,
-  SyncChmodOptions,
-  SyncChownOptions,
 };

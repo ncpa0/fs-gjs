@@ -457,7 +457,7 @@ class IOStream {
                     );
 
                   if (bytes != null) {
-                    p2.resolve(bytes.unref_to_array());
+                    p2.resolve(bytes.toArray());
                   } else {
                     p2.reject(
                       new FsError("Failed to read from stream."),
@@ -521,7 +521,7 @@ class IOStream {
                             );
 
                           if (bytes != null) {
-                            p3.resolve(bytes.unref_to_array());
+                            p3.resolve(bytes.toArray());
                           } else {
                             p3.reject(
                               new FsError(

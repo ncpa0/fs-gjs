@@ -22,6 +22,7 @@ import type {
 import { Fs } from "./fs";
 import type { IOStreamOptions, IOStreamType } from "./io-stream";
 import { IOStream } from "./io-stream";
+import { Permission } from "./permission-parser";
 import type {
   SyncAppendFileOptions,
   SyncAppendTextFileOptions,
@@ -42,7 +43,15 @@ import type { SyncIOStreamOptions } from "./sync-io-stream";
 import { SyncIOStream } from "./sync-io-stream";
 
 export default Fs;
-export { Fs, SyncFs, FileInfo, FsError, IOStream, SyncIOStream };
+export {
+  FileInfo,
+  Fs,
+  FsError,
+  IOStream,
+  Permission,
+  SyncFs,
+  SyncIOStream,
+};
 export type {
   AppendFileOptions,
   AppendTextFileOptions,
@@ -50,19 +59,17 @@ export type {
   ChownOptions,
   CopyFileOptions,
   DeleteFileOptions,
+  Encoding,
   FileExistsOptions,
   FileInfoOptions,
+  IOStreamOptions,
+  IOStreamType,
   ListDirOptions,
   MakeDirOptions,
   MakeLinkOptions,
   MoveFileOptions,
   ReadFileOptions,
   ReadTextFileOptions,
-  WriteFileOptions,
-  WriteTextFileOptions,
-  Encoding,
-  IOStreamOptions,
-  IOStreamType,
   SyncAppendFileOptions,
   SyncAppendTextFileOptions,
   SyncChmodOptions,
@@ -70,11 +77,13 @@ export type {
   SyncCopyFileOptions,
   SyncDeleteFileOptions,
   SyncFileInfoOptions,
+  SyncIOStreamOptions,
   SyncListDirOptions,
   SyncMoveFileOptions,
   SyncReadFileOptions,
   SyncReadTextFileOptions,
   SyncWriteFileOptions,
   SyncWriteTextFileOptions,
-  SyncIOStreamOptions,
+  WriteFileOptions,
+  WriteTextFileOptions,
 };

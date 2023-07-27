@@ -41,7 +41,7 @@ export const OptionsResolver = <O>(
     return defaultValue;
   }
 
-  function setDefault<K extends keyof O, V>(
+  function setDefault<K extends keyof O>(
     key: K,
     defaultValue: NonNullable<O>[K],
   ) {

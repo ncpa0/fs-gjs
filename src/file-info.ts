@@ -1,13 +1,16 @@
 import Gio from "gi://Gio?version=2.0";
+import type { Permission } from "./permission-parser";
 
 export class FileInfo {
   private _fileType;
+  readonly mode: number;
 
   constructor(
     public filepath: string,
     public _gioInfo: Gio.FileInfo,
   ) {
     this._fileType = this._gioInfo.get_file_type();
+    this.mode = this._gioInfo.get_attribute_uint32("unix::mode");
   }
 
   get filename() {
@@ -220,6 +223,13 @@ export class FileInfo {
    */
   get canTrash() {
     return this._gioInfo.get_attribute_boolean("access::can-trash");
+  }
+
+  /**
+   * Check if the file has the given permission.
+   */
+  checkPermission(permission: Permission) {
+    return (this.mode & permission) === permission;
   }
 }
 
