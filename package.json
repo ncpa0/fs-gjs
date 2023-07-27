@@ -1,6 +1,6 @@
 {
   "name": "fs-gjs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "./dist/esm/index.mjs",
   "types": "./dist/types/index.d.ts",
   "description": "Collection of file system utility functions for Gnome JavaScript (GJS).",
