@@ -24,6 +24,6 @@ export const parseFsError = (name: string, err: any): FsError => {
   }
 
   return new FsError(
-    "Unknown Error (" + String(err) + ")"
+    "Unknown Error (" + String(err) + ")",
   ).setOriginFunctionName(name);
 };

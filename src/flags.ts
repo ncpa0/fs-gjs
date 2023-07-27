@@ -2,12 +2,14 @@ import Gio from "gi://Gio?version=2.0";
 import type { OptionsResolver } from "./option-resolver";
 
 export interface FileQueryFlagOptions {
-  /** Follow symlinks. */
+  /**
+   * Follow symlinks.
+   */
   followSymlinks?: boolean;
 }
 
 export const getQueryFileFlag = (
-  options: OptionsResolver<FileQueryFlagOptions>
+  options: OptionsResolver<FileQueryFlagOptions>,
 ) => {
   if (options.get("followSymlinks", false) === true) {
     return Gio.FileQueryInfoFlags.NONE;
@@ -16,31 +18,36 @@ export const getQueryFileFlag = (
 };
 
 export interface FileCopyFlagOptions {
-  /** Overwrite any existing files */
+  /**
+   * Overwrite any existing files
+   */
   overwrite?: boolean;
-  /** Make a backup of any existing files. */
+  /**
+   * Make a backup of any existing files.
+   */
   makeBackup?: boolean;
-  /** Follow symlinks. */
+  /**
+   * Follow symlinks.
+   */
   followSymlinks?: boolean;
   /**
-   * Copy all file metadata instead of just default set used for
-   * copy (see #GFileInfo).
+   * Copy all file metadata instead of just default set used for copy
+   * (see #GFileInfo).
    */
   allMetadata?: boolean;
   /**
-   * Don't use copy and delete fallback if native move not
-   * supported.
+   * Don't use copy and delete fallback if native move not supported.
    */
   noFallbackForMove?: boolean;
   /**
-   * Leaves target file with default perms, instead of setting
-   * the source file perms.
+   * Leaves target file with default perms, instead of setting the
+   * source file perms.
    */
   targetDefaultPermissions?: boolean;
 }
 
 export const getCopyFileFlag = (
-  options: OptionsResolver<FileCopyFlagOptions>
+  options: OptionsResolver<FileCopyFlagOptions>,
 ) => {
   let flags = Gio.FileCopyFlags.NONE;
 
@@ -72,22 +79,23 @@ export const getCopyFileFlag = (
 };
 
 export interface FileCreateFlagOptions {
-  /** Create a file that can only be accessed by the current user. */
+  /**
+   * Create a file that can only be accessed by the current user.
+   */
   private?: boolean;
   /**
-   * Replace the destination as if it didn't exist before. Don't
-   * try to keep any old permissions, replace instead of
-   * following links. This is generally useful if you're doing a
-   * "copy over" rather than a "save new version of" replace
-   * operation. You can think of it as "unlink destination"
-   * before writing to it, although the implementation may not be
-   * exactly like that.
+   * Replace the destination as if it didn't exist before. Don't try
+   * to keep any old permissions, replace instead of following links.
+   * This is generally useful if you're doing a "copy over" rather
+   * than a "save new version of" replace operation. You can think of
+   * it as "unlink destination" before writing to it, although the
+   * implementation may not be exactly like that.
    */
   replace?: boolean;
 }
 
 export const getCreateFileFlag = (
-  options: OptionsResolver<FileCreateFlagOptions>
+  options: OptionsResolver<FileCreateFlagOptions>,
 ) => {
   let flags = Gio.FileCreateFlags.NONE;
 

@@ -8,7 +8,11 @@ import type {
   FileCreateFlagOptions,
   FileQueryFlagOptions,
 } from "./flags";
-import { getCopyFileFlag, getCreateFileFlag, getQueryFileFlag } from "./flags";
+import {
+  getCopyFileFlag,
+  getCreateFileFlag,
+  getQueryFileFlag,
+} from "./flags";
 import type { IOStreamOptions, IOStreamType } from "./io-stream";
 import { OptionsResolver } from "./option-resolver";
 import { parseFsError } from "./parse-fs-error";
@@ -36,10 +40,11 @@ interface SyncFsOperationOptions {}
 interface SyncListFilenamesOptions
   extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {}
 
-interface SyncListDirOptions extends Mixin<[SyncListFilenamesOptions]> {
+interface SyncListDirOptions
+  extends Mixin<[SyncListFilenamesOptions]> {
   /**
-   * A list of additional attributes to query for each file.
-   * These attributes can be then later accessed via the
+   * A list of additional attributes to query for each file. These
+   * attributes can be then later accessed via the
    * `file._gioInfo.get_attribute_*` methods.
    */
   attributes?: string[];
@@ -48,16 +53,18 @@ interface SyncListDirOptions extends Mixin<[SyncListFilenamesOptions]> {
 interface SyncFileInfoOptions
   extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {
   /**
-   * A list of additional attributes to query for each file.
-   * These attributes can be then later accessed via the
+   * A list of additional attributes to query for each file. These
+   * attributes can be then later accessed via the
    * `file._gioInfo.get_attribute_*` methods.
    */
   attributes?: string[];
 }
 
-interface SyncReadFileOptions extends Mixin<[SyncFsOperationOptions]> {}
+interface SyncReadFileOptions
+  extends Mixin<[SyncFsOperationOptions]> {}
 
-interface SyncReadTextFileOptions extends Mixin<[SyncReadFileOptions]> {
+interface SyncReadTextFileOptions
+  extends Mixin<[SyncReadFileOptions]> {
   /**
    * The encoding to use when reading the file.
    *
@@ -70,12 +77,11 @@ interface SyncWriteFileOptions
   extends Mixin<[SyncFsOperationOptions, FileCreateFlagOptions]> {
   etag?: string;
   /**
-   * When enabled, if a file already exists at the given path, it
-   * will be backed up before being overwritten.
+   * When enabled, if a file already exists at the given path, it will
+   * be backed up before being overwritten.
    *
-   * Created backup can be found at the same directory as the
-   * original file, with the same name, but with a "~" appended
-   * at the end.
+   * Created backup can be found at the same directory as the original
+   * file, with the same name, but with a "~" appended at the end.
    */
   makeBackup?: boolean;
 }
@@ -83,17 +89,22 @@ interface SyncWriteFileOptions
 interface SyncAppendFileOptions
   extends Mixin<[SyncWriteFileOptions, FileCreateFlagOptions]> {}
 
-interface SyncAppendTextFileOptions extends Mixin<[SyncAppendFileOptions]> {}
+interface SyncAppendTextFileOptions
+  extends Mixin<[SyncAppendFileOptions]> {}
 
-interface SyncWriteTextFileOptions extends Mixin<[SyncWriteFileOptions]> {}
+interface SyncWriteTextFileOptions
+  extends Mixin<[SyncWriteFileOptions]> {}
 
 interface SyncMoveFileOptions
   extends Mixin<[SyncFsOperationOptions, FileCopyFlagOptions]> {
   /**
-   * A callback that will be called with the current progress of
-   * the operation.
+   * A callback that will be called with the current progress of the
+   * operation.
    */
-  onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
+  onProgress?: (
+    current_num_bytes: number,
+    total_num_bytes: number,
+  ) => void;
 }
 
 interface SyncCopyFileOptions
@@ -102,14 +113,13 @@ interface SyncCopyFileOptions
 interface SyncDeleteFileOptions
   extends Mixin<[SyncFsOperationOptions, FileQueryFlagOptions]> {
   /**
-   * When enabled, instead of permanently deleting the file, it
-   * will be moved to the trash directory.
+   * When enabled, instead of permanently deleting the file, it will
+   * be moved to the trash directory.
    */
   trash?: boolean;
   /**
-   * When enabled, if a file is a directory, all of the files
-   * inside it will be deleted before deleting the directory
-   * itself.
+   * When enabled, if a file is a directory, all of the files inside
+   * it will be deleted before deleting the directory itself.
    */
   recursive?: boolean;
 }
@@ -122,8 +132,8 @@ interface SyncChownOptions
 
 interface SyncFsOptions {
   /**
-   * Path to a directory which will be used as a base for all
-   * calls on this SyncFs instance.
+   * Path to a directory which will be used as a base for all calls on
+   * this SyncFs instance.
    *
    * @example
    *   const fs = new SyncFs({ cwd: "/home/user" });
@@ -135,7 +145,7 @@ interface SyncFsOptions {
 
 export const sync = <F extends (...args: any[]) => any>(
   name: string,
-  fn: F
+  fn: F,
 ): F => {
   return ((...args: any[]) => {
     try {
@@ -151,31 +161,44 @@ class SyncFs {
 
   private static globalInstance = new SyncFs();
 
-  /** Creates a new Gio.File instance for the given path. */
+  /**
+   * Creates a new Gio.File instance for the given path.
+   */
   public static file(path: string, cwd?: string) {
     return SyncFs.globalInstance.file(path, cwd);
   }
 
-  /** Checks if a file or directory exists. */
+  /**
+   * Checks if a file or directory exists.
+   */
   public static fileExists(path: string) {
     return SyncFs.globalInstance.fileExists(path);
   }
 
-  /** Lists all the contents of a directory. */
+  /**
+   * Lists all the contents of a directory.
+   */
   public static listDir(path: string, options?: SyncListDirOptions) {
     return SyncFs.globalInstance.listDir(path, options);
   }
 
-  /** Lists the names of all files inside of a directory. */
+  /**
+   * Lists the names of all files inside of a directory.
+   */
   public static listFilenames(
     path: string,
-    options?: SyncListFilenamesOptions
+    options?: SyncListFilenamesOptions,
   ) {
     return SyncFs.globalInstance.listFilenames(path, options);
   }
 
-  /** Gets information about a specific file or directory. */
-  public static fileInfo(path: string, options?: SyncFileInfoOptions) {
+  /**
+   * Gets information about a specific file or directory.
+   */
+  public static fileInfo(
+    path: string,
+    options?: SyncFileInfoOptions,
+  ) {
     return SyncFs.globalInstance.fileInfo(path, options);
   }
 
@@ -190,103 +213,133 @@ class SyncFs {
 
   /**
    * Reads the content of a file under the given path using the
-   * `readFile()` method and decodes that content to string using
-   * the given encoding.
+   * `readFile()` method and decodes that content to string using the
+   * given encoding.
    */
-  public static readTextFile(path: string, options?: SyncReadTextFileOptions) {
+  public static readTextFile(
+    path: string,
+    options?: SyncReadTextFileOptions,
+  ) {
     return SyncFs.globalInstance.readTextFile(path, options);
   }
 
-  /** Writes the given data to a file under the given path. */
+  /**
+   * Writes the given data to a file under the given path.
+   */
   public static writeFile(
     path: string,
     data: Uint8Array,
-    options?: SyncWriteFileOptions
+    options?: SyncWriteFileOptions,
   ) {
     return SyncFs.globalInstance.writeFile(path, data, options);
   }
 
   /**
-   * Encodes given string into a byte array (UTF-8), and writes
-   * that data to a file under the given path using the
-   * `writeFile()` method.
+   * Encodes given string into a byte array (UTF-8), and writes that
+   * data to a file under the given path using the `writeFile()`
+   * method.
    */
   public static writeTextFile(
     path: string,
     data: string,
-    options?: SyncWriteTextFileOptions
+    options?: SyncWriteTextFileOptions,
   ) {
     return SyncFs.globalInstance.writeTextFile(path, data, options);
   }
 
-  /** Appends the given data to a file under the given path. */
+  /**
+   * Appends the given data to a file under the given path.
+   */
   public static appendFile(
     path: string,
     data: Uint8Array,
-    options?: SyncAppendFileOptions
+    options?: SyncAppendFileOptions,
   ) {
     return SyncFs.globalInstance.appendFile(path, data, options);
   }
 
   /**
-   * Encodes given string into a byte array (UTF-8), and appends
-   * that data to a file under the given path using the
-   * `appendFile()` method.
+   * Encodes given string into a byte array (UTF-8), and appends that
+   * data to a file under the given path using the `appendFile()`
+   * method.
    */
   public static appendTextFile(
     path: string,
     data: string,
-    options?: SyncAppendTextFileOptions
+    options?: SyncAppendTextFileOptions,
   ) {
     return SyncFs.globalInstance.appendTextFile(path, data, options);
   }
 
-  /** Moves a file or directory from one path to another. */
+  /**
+   * Moves a file or directory from one path to another.
+   */
   public static moveFile(
     source: string,
     destination: string,
-    options?: SyncMoveFileOptions
+    options?: SyncMoveFileOptions,
   ) {
-    return SyncFs.globalInstance.moveFile(source, destination, options);
+    return SyncFs.globalInstance.moveFile(
+      source,
+      destination,
+      options,
+    );
   }
 
-  /** Alias for the `moveFile()` method. */
+  /**
+   * Alias for the `moveFile()` method.
+   */
   public static renameFile(
     source: string,
     destination: string,
-    options?: SyncMoveFileOptions
+    options?: SyncMoveFileOptions,
   ) {
-    return SyncFs.globalInstance.renameFile(source, destination, options);
+    return SyncFs.globalInstance.renameFile(
+      source,
+      destination,
+      options,
+    );
   }
 
-  /** Copies a file or directory from one path to another. */
+  /**
+   * Copies a file or directory from one path to another.
+   */
   public static copyFile(
     source: string,
     destination: string,
-    options?: SyncCopyFileOptions
+    options?: SyncCopyFileOptions,
   ) {
-    return SyncFs.globalInstance.copyFile(source, destination, options);
+    return SyncFs.globalInstance.copyFile(
+      source,
+      destination,
+      options,
+    );
   }
 
   /**
    * Deletes a file or directory from under the given path.
    *
-   * If `trash` is set to `true`, the file will be moved to the
-   * user's trash directory instead of being deleted.
+   * If `trash` is set to `true`, the file will be moved to the user's
+   * trash directory instead of being deleted.
    */
-  public static deleteFile(path: string, options?: SyncDeleteFileOptions) {
+  public static deleteFile(
+    path: string,
+    options?: SyncDeleteFileOptions,
+  ) {
     return SyncFs.globalInstance.deleteFile(path, options);
   }
 
-  /** Creates a new directory under the given path. */
+  /**
+   * Creates a new directory under the given path.
+   */
   public static makeDir(path: string) {
     return SyncFs.globalInstance.makeDir(path);
   }
 
   /**
-   * Creates a symbolic link file undef the path given in the
-   * first parameter, created link will point to a file or
-   * directory that's provided as the second parameter.
+   * Creates a symbolic link file undef the path given in the first
+   * parameter, created link will point to a file or directory that's
+   * provided as the second parameter.
    *
    * @param linkPath The path to the new link file.
    * @param pointingTo Link destination file.
@@ -300,25 +353,27 @@ class SyncFs {
    *
    * The provided mode can be either:
    *
-   * - A number representing the octal value of the permissions
-   *   (ex. `0o755`)
+   * - A number representing the octal value of the permissions (ex.
+   *   `0o755`)
    * - A string in the rwx format (ex. `rwxrw-r--`)
    * - An object describing all the permissions
    */
   public static chmod(
     path: string,
     mode: FilePermission,
-    options?: SyncChmodOptions
+    options?: SyncChmodOptions,
   ) {
     return SyncFs.globalInstance.chmod(path, mode, options);
   }
 
-  /** Changes the owner and group of a file or directory. */
+  /**
+   * Changes the owner and group of a file or directory.
+   */
   public static chown(
     path: string,
     uid: number,
     gid: number,
-    options?: SyncChownOptions
+    options?: SyncChownOptions,
   ) {
     return SyncFs.globalInstance.chown(path, uid, gid, options);
   }
@@ -326,16 +381,19 @@ class SyncFs {
   /**
    * Creates a new SyncIOStream instance.
    *
-   * `type` parameter determines if the Stream should create a
-   * new file, open an existing one or overwrite an existing
-   * one.
+   * `type` parameter determines if the Stream should create a new
+   * file, open an existing one or overwrite an existing one.
    */
   public static openIOStream(
     path: string,
     type: IOStreamType,
-    options?: IOStreamOptions
+    options?: IOStreamOptions,
   ) {
-    return SyncFs.globalInstance.openFileIOStream(path, type, options);
+    return SyncFs.globalInstance.openFileIOStream(
+      path,
+      type,
+      options,
+    );
   }
 
   // #endregion
@@ -347,20 +405,32 @@ class SyncFs {
   constructor(options?: SyncFsOptions) {
     this._cwd = options?.cwd ?? null;
 
-    this.resolvePath = sync("resolvePath", this.resolvePath.bind(this));
+    this.resolvePath = sync(
+      "resolvePath",
+      this.resolvePath.bind(this),
+    );
     this.file = sync("file", this.file.bind(this));
     this.fileExists = sync("fileExists", this.fileExists.bind(this));
     this.listDir = sync("listDir", this.listDir.bind(this));
-    this.listFilenames = sync("listFilenames", this.listFilenames.bind(this));
+    this.listFilenames = sync(
+      "listFilenames",
+      this.listFilenames.bind(this),
+    );
     this.fileInfo = sync("fileInfo", this.fileInfo.bind(this));
     this.readFile = sync("readFile", this.readFile.bind(this));
-    this.readTextFile = sync("readTextFile", this.readTextFile.bind(this));
+    this.readTextFile = sync(
+      "readTextFile",
+      this.readTextFile.bind(this),
+    );
     this.writeFile = sync("writeFile", this.writeFile.bind(this));
-    this.writeTextFile = sync("writeTextFile", this.writeTextFile.bind(this));
+    this.writeTextFile = sync(
+      "writeTextFile",
+      this.writeTextFile.bind(this),
+    );
     this.appendFile = sync("appendFile", this.appendFile.bind(this));
     this.appendTextFile = sync(
       "appendTextFile",
-      this.appendTextFile.bind(this)
+      this.appendTextFile.bind(this),
     );
     this.moveFile = sync("moveFile", this.moveFile.bind(this));
     this.renameFile = sync("renameFile", this.renameFile.bind(this));
@@ -380,18 +450,24 @@ class SyncFs {
     return path;
   }
 
-  /** Creates a new Gio.File instance for the given path. */
+  /**
+   * Creates a new Gio.File instance for the given path.
+   */
   public file(path: string, cwd?: string) {
     return Gio.File.new_for_path(this.resolvePath(path, cwd));
   }
 
-  /** Checks if a file or directory exists. */
+  /**
+   * Checks if a file or directory exists.
+   */
   public fileExists(path: string) {
     const file = this.file(path);
     return file.query_exists(null);
   }
 
-  /** Lists all the contents of a directory. */
+  /**
+   * Lists all the contents of a directory.
+   */
   public listDir(path: string, options?: SyncListDirOptions) {
     const dirFile = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
@@ -400,7 +476,7 @@ class SyncFs {
     const enumerator = dirFile.enumerate_children(
       getAttributes(opt.get("attributes", [])),
       queryFlag,
-      null
+      null,
     );
 
     if (!enumerator) {
@@ -417,15 +493,23 @@ class SyncFs {
       }
 
       allFiles.push(
-        new FileInfo(join(dirFile.get_path()!, nextFile.get_name()), nextFile)
+        new FileInfo(
+          join(dirFile.get_path()!, nextFile.get_name()),
+          nextFile,
+        ),
       );
     }
 
     return allFiles;
   }
 
-  /** Lists all the contents of a directory as file names. */
-  public listFilenames(path: string, options?: SyncListFilenamesOptions) {
+  /**
+   * Lists all the contents of a directory as file names.
+   */
+  public listFilenames(
+    path: string,
+    options?: SyncListFilenamesOptions,
+  ) {
     const dirFile = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
     const queryFlag = getQueryFileFlag(opt);
@@ -433,7 +517,7 @@ class SyncFs {
     const enumerator = dirFile.enumerate_children(
       "standard::name",
       queryFlag,
-      null
+      null,
     );
 
     if (!enumerator) {
@@ -457,7 +541,9 @@ class SyncFs {
     return allFiles;
   }
 
-  /** Gets information about a specific file or directory. */
+  /**
+   * Gets information about a specific file or directory.
+   */
   public fileInfo(path: string, options?: SyncFileInfoOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
@@ -467,7 +553,7 @@ class SyncFs {
     const info = file.query_info(
       getAttributes(opt.get("attributes", [])),
       flag,
-      null
+      null,
     );
 
     return new FileInfo(file.get_path()!, info);
@@ -492,10 +578,13 @@ class SyncFs {
 
   /**
    * Reads the content of a file under the given path using the
-   * `readFile()` method and decodes that content to string using
-   * the given encoding.
+   * `readFile()` method and decodes that content to string using the
+   * given encoding.
    */
-  public readTextFile(path: string, options?: SyncReadTextFileOptions) {
+  public readTextFile(
+    path: string,
+    options?: SyncReadTextFileOptions,
+  ) {
     const opt = OptionsResolver(options, OptValidators);
     const decoder = new TextDecoder(opt.get("encoding", "utf-8"));
 
@@ -504,11 +593,13 @@ class SyncFs {
     return decoder.decode(contents);
   }
 
-  /** Writes the given data to a file under the given path. */
+  /**
+   * Writes the given data to a file under the given path.
+   */
   public writeFile(
     path: string,
     contents: Uint8Array,
-    options?: SyncWriteFileOptions
+    options?: SyncWriteFileOptions,
   ) {
     validateBytes(contents);
 
@@ -521,7 +612,7 @@ class SyncFs {
         opt.get("etag", null),
         opt.get("makeBackup", false),
         createFlag,
-        null
+        null,
       );
 
       let closeSuccess: boolean;
@@ -535,7 +626,9 @@ class SyncFs {
       if (closeSuccess) {
         return;
       } else {
-        throw new FsError(`Failed to close file stream: ${file.get_path()}`);
+        throw new FsError(
+          `Failed to close file stream: ${file.get_path()}`,
+        );
       }
     } else {
       const [success] = file.replace_contents(
@@ -543,7 +636,7 @@ class SyncFs {
         opt.get("etag", null),
         opt.get("makeBackup", false),
         createFlag,
-        null
+        null,
       );
 
       if (success) {
@@ -555,14 +648,14 @@ class SyncFs {
   }
 
   /**
-   * Encodes given string into a byte array (UTF-8), and writes
-   * that data to a file under the given path using the
-   * `writeFile()` method.
+   * Encodes given string into a byte array (UTF-8), and writes that
+   * data to a file under the given path using the `writeFile()`
+   * method.
    */
   public writeTextFile(
     path: string,
     contents: string,
-    options?: SyncWriteTextFileOptions
+    options?: SyncWriteTextFileOptions,
   ) {
     validateText(contents);
 
@@ -573,11 +666,13 @@ class SyncFs {
     return this.writeFile(path, data, options);
   }
 
-  /** Appends the given data to a file under the given path. */
+  /**
+   * Appends the given data to a file under the given path.
+   */
   public appendFile(
     path: string,
     contents: Uint8Array,
-    options?: SyncAppendFileOptions
+    options?: SyncAppendFileOptions,
   ) {
     validateBytes(contents);
 
@@ -594,7 +689,9 @@ class SyncFs {
       const bytesWritten = stream.write_bytes(bytes, null);
 
       if (bytesWritten === -1) {
-        throw new FsError(`Failed to append file: ${file.get_path()}`);
+        throw new FsError(
+          `Failed to append file: ${file.get_path()}`,
+        );
       }
     } finally {
       closeSuccess = stream.close(null);
@@ -603,19 +700,21 @@ class SyncFs {
     if (closeSuccess) {
       return;
     } else {
-      throw new FsError(`Failed to close file stream: ${file.get_path()}`);
+      throw new FsError(
+        `Failed to close file stream: ${file.get_path()}`,
+      );
     }
   }
 
   /**
-   * Encodes given string into a byte array (UTF-8), and appends
-   * that data to a file under the given path using the
-   * `appendFile()` method.
+   * Encodes given string into a byte array (UTF-8), and appends that
+   * data to a file under the given path using the `appendFile()`
+   * method.
    */
   public appendTextFile(
     path: string,
     contents: string,
-    options?: SyncAppendTextFileOptions
+    options?: SyncAppendTextFileOptions,
   ) {
     validateText(contents);
 
@@ -626,11 +725,13 @@ class SyncFs {
     return this.appendFile(path, data, options);
   }
 
-  /** Moves a file or directory from one path to another. */
+  /**
+   * Moves a file or directory from one path to another.
+   */
   public moveFile(
     sourcePath: string,
     destinationPath: string,
-    options?: SyncMoveFileOptions
+    options?: SyncMoveFileOptions,
   ) {
     const oldFile = this.file(sourcePath);
     const newFile = this.file(destinationPath);
@@ -641,32 +742,36 @@ class SyncFs {
       newFile,
       copyFlag,
       null,
-      opt.get("onProgress", null)
+      opt.get("onProgress", null),
     );
 
     if (success) {
       return;
     } else {
       throw new FsError(
-        `Failed to move file: ${oldFile.get_path()} -> ${newFile.get_path()}`
+        `Failed to move file: ${oldFile.get_path()} -> ${newFile.get_path()}`,
       );
     }
   }
 
-  /** Alias for the `moveFile()` method. */
+  /**
+   * Alias for the `moveFile()` method.
+   */
   public renameFile(
     sourcePath: string,
     destinationPath: string,
-    options?: SyncMoveFileOptions
+    options?: SyncMoveFileOptions,
   ) {
     return this.moveFile(sourcePath, destinationPath, options);
   }
 
-  /** Copies a file or directory from one path to another. */
+  /**
+   * Copies a file or directory from one path to another.
+   */
   public copyFile(
     sourcePath: string,
     destinationPath: string,
-    options?: SyncCopyFileOptions
+    options?: SyncCopyFileOptions,
   ) {
     const srcFile = this.file(sourcePath);
     const destFile = this.file(destinationPath);
@@ -677,14 +782,14 @@ class SyncFs {
       destFile,
       copyFlag,
       null,
-      opt.get("onProgress", null)
+      opt.get("onProgress", null),
     );
 
     if (success) {
       return;
     } else {
       throw new FsError(
-        `Failed to copy file: ${srcFile.get_path()} -> ${destFile.get_path()}`
+        `Failed to copy file: ${srcFile.get_path()} -> ${destFile.get_path()}`,
       );
     }
   }
@@ -692,8 +797,8 @@ class SyncFs {
   /**
    * Deletes a file or directory from under the given path.
    *
-   * If `trash` is set to `true`, the file will be moved to the
-   * user's trash directory instead of being deleted.
+   * If `trash` is set to `true`, the file will be moved to the user's
+   * trash directory instead of being deleted.
    */
   public deleteFile(path: string, options?: SyncDeleteFileOptions) {
     const file = this.file(path);
@@ -709,7 +814,10 @@ class SyncFs {
       }
     }
 
-    if (opt.get("recursive", false) && this.fileInfo(path).isDirectory) {
+    if (
+      opt.get("recursive", false) &&
+      this.fileInfo(path).isDirectory
+    ) {
       const files = this.listFilenames(path, options);
 
       for (const filename of files) {
@@ -726,7 +834,9 @@ class SyncFs {
     }
   }
 
-  /** Creates a new directory under the given path. */
+  /**
+   * Creates a new directory under the given path.
+   */
   public makeDir(path: string) {
     const file = this.file(path);
 
@@ -735,14 +845,16 @@ class SyncFs {
     if (success) {
       return;
     } else {
-      throw new FsError(`Failed to make directory: ${file.get_path()}`);
+      throw new FsError(
+        `Failed to make directory: ${file.get_path()}`,
+      );
     }
   }
 
   /**
-   * Creates a symbolic link file undef the path given in the
-   * first parameter, created link will point to a file or
-   * directory that's provided as the second parameter.
+   * Creates a symbolic link file undef the path given in the first
+   * parameter, created link will point to a file or directory that's
+   * provided as the second parameter.
    *
    * @param linkPath The path to the new link file.
    * @param pointingTo Link destination file.
@@ -757,7 +869,7 @@ class SyncFs {
       return;
     } else {
       throw new FsError(
-        `Failed to create symbolic link: ${linkFile.get_path()} -> ${dest}`
+        `Failed to create symbolic link: ${linkFile.get_path()} -> ${dest}`,
       );
     }
   }
@@ -767,12 +879,16 @@ class SyncFs {
    *
    * The provided mode can be either:
    *
-   * - A number representing the octal value of the permissions
-   *   (ex. `0o755`)
+   * - A number representing the octal value of the permissions (ex.
+   *   `0o755`)
    * - A string in the rwx format (ex. `rwxrw-r--`)
    * - An object describing all the permissions
    */
-  public chmod(path: string, mode: FilePermission, options?: SyncChmodOptions) {
+  public chmod(
+    path: string,
+    mode: FilePermission,
+    options?: SyncChmodOptions,
+  ) {
     validatePermissions(mode);
 
     const file = this.file(path);
@@ -780,25 +896,34 @@ class SyncFs {
     const queryFlag = getQueryFileFlag(opt);
 
     const info = Gio.FileInfo.new();
-    info.set_attribute_uint32("unix::mode", parseFilePermission(mode));
+    info.set_attribute_uint32(
+      "unix::mode",
+      parseFilePermission(mode),
+    );
 
-    const success = file.set_attributes_from_info(info, queryFlag, null);
+    const success = file.set_attributes_from_info(
+      info,
+      queryFlag,
+      null,
+    );
 
     if (success) {
       return;
     } else {
       throw new FsError(
-        `Failed to change file permissions: ${file.get_path()}`
+        `Failed to change file permissions: ${file.get_path()}`,
       );
     }
   }
 
-  /** Changes the owner and group of a file or directory. */
+  /**
+   * Changes the owner and group of a file or directory.
+   */
   public chown(
     path: string,
     uid: number,
     gid: number,
-    options?: SyncChownOptions
+    options?: SyncChownOptions,
   ) {
     validateNumber(uid, "uid");
     validateNumber(gid, "gid");
@@ -811,29 +936,34 @@ class SyncFs {
     info.set_attribute_uint32("unix::uid", uid);
     info.set_attribute_uint32("unix::gid", gid);
 
-    const success = file.set_attributes_from_info(info, queryFlag, null);
+    const success = file.set_attributes_from_info(
+      info,
+      queryFlag,
+      null,
+    );
 
     if (!success) {
-      throw new FsError(`Failed to change file owner: ${file.get_path()}`);
+      throw new FsError(
+        `Failed to change file owner: ${file.get_path()}`,
+      );
     }
   }
 
   /**
    * Creates a new SyncIOStream instance.
    *
-   * `type` parameter determines if the Stream should create a
-   * new file, open an existing one or overwrite an existing
-   * one.
+   * `type` parameter determines if the Stream should create a new
+   * file, open an existing one or overwrite an existing one.
    */
   public openFileIOStream(
     path: string,
     type: IOStreamType,
-    options: SyncIOStreamOptions = {}
+    options: SyncIOStreamOptions = {},
   ) {
     return SyncIOStream.openFile(
       path,
       type,
-      this._cwd ? { cwd: this._cwd, ...options } : options
+      this._cwd ? { cwd: this._cwd, ...options } : options,
     );
   }
 
