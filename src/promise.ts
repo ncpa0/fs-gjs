@@ -3,18 +3,24 @@ import { FsError } from "./errors";
 import { parseFsError } from "./parse-fs-error";
 
 type PromiseApi<T> = {
-  /** Resolves this promise with the given value. */
+  /**
+   * Resolves this promise with the given value.
+   */
   resolve: (value: T) => void;
-  /** Rejects this promise with the given reason. */
+  /**
+   * Rejects this promise with the given reason.
+   */
   reject: (reason?: any) => void;
   /**
-   * Creates a callback function, if that function ever throws,
-   * this promise will reject with the thrown error.
+   * Creates a callback function, if that function ever throws, this
+   * promise will reject with the thrown error.
    */
-  asyncCallback: <F extends (...args: any[]) => any>(callback: F) => F;
+  asyncCallback: <F extends (...args: any[]) => any>(
+    callback: F,
+  ) => F;
   /**
-   * If this operation was aborted this will throw an error,
-   * stopping the execution of next operations.
+   * If this operation was aborted this will throw an error, stopping
+   * the execution of next operations.
    */
   breakpoint: () => void;
   /**
@@ -33,7 +39,11 @@ class AbortFsError extends FsError {
 
 class BreakPointError extends FsError {
   static isBreakPointError(err: any): err is BreakPointError {
-    return !!err && typeof err === "object" && err instanceof BreakPointError;
+    return (
+      !!err &&
+      typeof err === "object" &&
+      err instanceof BreakPointError
+    );
   }
 
   constructor(public msg: any) {
@@ -45,7 +55,7 @@ class BreakPointError extends FsError {
 export const promise = <T = void>(
   name: string,
   abortSignal: AbortSignal | undefined | null,
-  callback: (api: PromiseApi<T>) => any
+  callback: (api: PromiseApi<T>) => any,
 ) => {
   let cancellable: Gio.Cancellable | null = null;
 
@@ -70,7 +80,7 @@ export const promise = <T = void>(
     }
 
     const asyncCallback = <F extends (...args: any[]) => any>(
-      callback: F
+      callback: F,
     ): F => {
       return ((...args: any[]) => {
         try {
@@ -96,7 +106,7 @@ export const promise = <T = void>(
       ? () => {
           if (isAborted) {
             throw new BreakPointError(
-              "Breakpoint was reached after operation was aborted."
+              "Breakpoint was reached after operation was aborted.",
             );
           }
         }

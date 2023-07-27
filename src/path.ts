@@ -3,7 +3,7 @@ const SEPARATOR_CHAR = "/";
 function __assertPath(path: any): asserts path is string {
   if (typeof path !== "string") {
     throw new TypeError(
-      "Path must be a string. Received " + JSON.stringify(path)
+      "Path must be a string. Received " + JSON.stringify(path),
     );
   }
 }
@@ -84,7 +84,8 @@ export function normalize(path: string) {
   if (path.length === 0) return ".";
 
   const isAbsolute = path.charCodeAt(0) === 47; /*/*/
-  const trailingSeparator = path.charCodeAt(path.length - 1) === 47; /*/*/
+  const trailingSeparator =
+    path.charCodeAt(path.length - 1) === 47; /*/*/
 
   // Normalize the path
   path = normalizeString(path, !isAbsolute);

@@ -23,7 +23,7 @@ class SyncIOStream {
   static openFile(
     path: string,
     type: IOStreamType,
-    options?: SyncIOStreamOptions
+    options?: SyncIOStreamOptions,
   ) {
     return sync("SyncIOStream.openFile", () => {
       const file = SyncFs.file(path, options?.cwd);
@@ -42,11 +42,13 @@ class SyncIOStream {
 
   private constructor(
     private gioFile: Gio.File,
-    options?: SyncIOStreamOptions
+    options?: SyncIOStreamOptions,
   ) {
     this._options = OptionsResolver(options, OptValidators);
 
-    /** Options are validated on access */
+    /**
+     * Options are validated on access
+     */
     this._options.get("cwd");
     this._options.get("etag");
     this._options.get("makeBackup");
@@ -56,26 +58,34 @@ class SyncIOStream {
     this.close = sync("SyncIOStream.close", this.close.bind(this));
     this.flush = sync("SyncIOStream.flush", this.flush.bind(this));
     this.read = sync("SyncIOStream.read", this.read.bind(this));
-    this.readAll = sync("SyncIOStream.readAll", this.readAll.bind(this));
-    this.truncate = sync("SyncIOStream.truncate", this.truncate.bind(this));
+    this.readAll = sync(
+      "SyncIOStream.readAll",
+      this.readAll.bind(this),
+    );
+    this.truncate = sync(
+      "SyncIOStream.truncate",
+      this.truncate.bind(this),
+    );
     this.write = sync("SyncIOStream.write", this.write.bind(this));
     this.skip = sync("SyncIOStream.skip", this.skip.bind(this));
     this.seek = sync("SyncIOStream.seek", this.seek.bind(this));
     this.seekFromEnd = sync(
       "SyncIOStream.seekFromEnd",
-      this.seekFromEnd.bind(this)
+      this.seekFromEnd.bind(this),
     );
     this.seekFromStart = sync(
       "SyncIOStream.seekFromStart",
-      this.seekFromStart.bind(this)
+      this.seekFromStart.bind(this),
     );
     this.currentPosition = sync(
       "SyncIOStream.currentPosition",
-      this.currentPosition.bind(this)
+      this.currentPosition.bind(this),
     );
   }
 
-  /** The underlying Gio.FileIOStream. */
+  /**
+   * The underlying Gio.FileIOStream.
+   */
   public get _gioStream() {
     return this._stream!;
   }
@@ -89,8 +99,7 @@ class SyncIOStream {
   }
 
   /**
-   * Whether the Output Stream is currently in the process of
-   * closing.
+   * Whether the Output Stream is currently in the process of closing.
    */
   public get isClosing() {
     return this._stream?.output_stream.is_closing();
@@ -108,7 +117,10 @@ class SyncIOStream {
       case "CREATE": {
         const createFlag = getCreateFileFlag(opt);
 
-        this._stream = this.gioFile.create_readwrite(createFlag, null);
+        this._stream = this.gioFile.create_readwrite(
+          createFlag,
+          null,
+        );
         return;
       }
       case "REPLACE": {
@@ -118,7 +130,7 @@ class SyncIOStream {
           opt.get("etag", null),
           opt.get("makeBackup", false),
           createFlag,
-          null
+          null,
         );
         return;
       }
@@ -145,15 +157,15 @@ class SyncIOStream {
   /**
    * Returns the current cursor position.
    *
-   * @returns The (positive or zero) offset from the beginning of
-   *   the buffer, zero if the target is not seekable.
+   * @returns The (positive or zero) offset from the beginning of the
+   *   buffer, zero if the target is not seekable.
    */
   public currentPosition() {
     return this._stream!.tell();
   }
   /**
-   * Moves the cursor position by the given offset, from it's
-   * current position.
+   * Moves the cursor position by the given offset, from it's current
+   * position.
    *
    * @param offset The offset from the current cursor position.
    */
@@ -161,15 +173,19 @@ class SyncIOStream {
     this._ensureCanSeek();
     validateInteger(offset);
 
-    const success = this._stream!.seek(offset, GLib.SeekType.CUR, null);
+    const success = this._stream!.seek(
+      offset,
+      GLib.SeekType.CUR,
+      null,
+    );
 
     if (!success) {
       throw new FsError("Failed to seek stream.");
     }
   }
   /**
-   * Moves the cursor position by the given offset, from the end
-   * of the stream.
+   * Moves the cursor position by the given offset, from the end of
+   * the stream.
    *
    * @param offset The offset from the end of the stream.
    */
@@ -177,15 +193,19 @@ class SyncIOStream {
     this._ensureCanSeek();
     validateInteger(offset);
 
-    const success = this._stream!.seek(offset, GLib.SeekType.END, null);
+    const success = this._stream!.seek(
+      offset,
+      GLib.SeekType.END,
+      null,
+    );
 
     if (!success) {
       throw new FsError("Failed to seek stream.");
     }
   }
   /**
-   * Moves the cursor position by the given offset, from the
-   * start of the stream.
+   * Moves the cursor position by the given offset, from the start of
+   * the stream.
    *
    * @param offset The offset from the start of the stream.
    */
@@ -193,23 +213,29 @@ class SyncIOStream {
     this._ensureCanSeek();
     validateInteger(offset);
 
-    const success = this._stream!.seek(offset, GLib.SeekType.SET, null);
+    const success = this._stream!.seek(
+      offset,
+      GLib.SeekType.SET,
+      null,
+    );
 
     if (!success) {
       throw new FsError("Failed to seek stream.");
     }
   }
   /**
-   * Skips the given number of bytes, effectively moving the
-   * cursor position by the given offset, from it's current
-   * position.
+   * Skips the given number of bytes, effectively moving the cursor
+   * position by the given offset, from it's current position.
    *
    * @param byteCount The number of bytes to be skipped.
    * @returns The number of bytes skipped.
    */
   public skip(byteCount: number) {
     validatePositiveInteger(byteCount);
-    const bytesSkipped = this._stream!.input_stream.skip(byteCount, null);
+    const bytesSkipped = this._stream!.input_stream.skip(
+      byteCount,
+      null,
+    );
 
     if (bytesSkipped === -1) {
       throw new FsError("Failed to skip stream.");
@@ -233,7 +259,10 @@ class SyncIOStream {
     }
 
     const bytes = GLib.Bytes.new(content);
-    const bytesWritten = this._stream!.output_stream.write_bytes(bytes, null);
+    const bytesWritten = this._stream!.output_stream.write_bytes(
+      bytes,
+      null,
+    );
 
     if (bytesWritten === -1) {
       throw new FsError("Failed to write to stream.");
@@ -243,8 +272,8 @@ class SyncIOStream {
   }
 
   /**
-   * Reads the given number of bytes starting from the current
-   * cursor position.
+   * Reads the given number of bytes starting from the current cursor
+   * position.
    *
    * @param byteCount The number of bytes to read.
    * @returns Array of bytes read (`Uint8Array`)
@@ -252,7 +281,10 @@ class SyncIOStream {
   public read(byteCount: number) {
     validatePositiveInteger(byteCount);
 
-    const bytes = this._stream!.input_stream.read_bytes(byteCount, null);
+    const bytes = this._stream!.input_stream.read_bytes(
+      byteCount,
+      null,
+    );
 
     if (bytes == null) {
       throw new FsError("Failed to read from stream.");
@@ -274,7 +306,10 @@ class SyncIOStream {
     let result = new Uint8Array([]);
 
     while (true) {
-      const nextBytes = this._stream?.input_stream.read_bytes(chunkSize, null);
+      const nextBytes = this._stream?.input_stream.read_bytes(
+        chunkSize,
+        null,
+      );
 
       if (nextBytes == null) {
         throw new FsError("Failed to read from stream.");
@@ -286,7 +321,7 @@ class SyncIOStream {
         break;
       } else {
         const newResult = new Uint8Array(
-          result.byteLength + byteArray!.byteLength
+          result.byteLength + byteArray!.byteLength,
         );
         newResult.set(result);
         newResult.set(byteArray!, result.byteLength);
@@ -300,9 +335,9 @@ class SyncIOStream {
   /**
    * Truncates the stream to the given length.
    *
-   * If the stream was previously larger than `length`, the extra
-   * data is discarded. If the stream was previously shorter than
-   * `length`, it is extended with NUL ('\0') bytes.
+   * If the stream was previously larger than `length`, the extra data
+   * is discarded. If the stream was previously shorter than `length`,
+   * it is extended with NUL ('\0') bytes.
    */
   public truncate(length: number) {
     this._ensureCanTruncate();
@@ -316,8 +351,7 @@ class SyncIOStream {
   }
 
   /**
-   * Forces an asynchronous write of all user-space buffered
-   * data.
+   * Forces an asynchronous write of all user-space buffered data.
    */
   public flush() {
     const success = this._stream!.output_stream.flush(null);
@@ -327,7 +361,9 @@ class SyncIOStream {
     }
   }
 
-  /** Closes the stream. */
+  /**
+   * Closes the stream.
+   */
   public close() {
     if (this._stream) {
       const success = this._stream.close(null);

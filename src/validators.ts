@@ -3,7 +3,7 @@ import { InvalidOptionError } from "./errors";
 import type { FilePermission } from "./permission-parser";
 
 type LiteralToType<
-  T extends "number" | "string" | "boolean" | "function" | "object"
+  T extends "number" | "string" | "boolean" | "function" | "object",
 > = {
   number: number;
   string: string;
@@ -15,7 +15,7 @@ type LiteralToType<
 // #region Option Validators
 
 function validateType<
-  T extends "number" | "string" | "boolean" | "function" | "object"
+  T extends "number" | "string" | "boolean" | "function" | "object",
 >(v: any, name: string, t: T): asserts v is LiteralToType<T> {
   if (typeof v !== t) {
     throw new InvalidOptionError(name, t);
@@ -28,13 +28,18 @@ function validateType<
 
 const validateAbortSignal = (v: any) => {
   if (typeof AbortSignal === "undefined") {
-    throw new Error("AbortSignal is not supported in this environment.");
+    throw new Error(
+      "AbortSignal is not supported in this environment.",
+    );
   }
 
   validateType(v, "abortSignal", "object");
 
   if (!(v instanceof AbortSignal)) {
-    throw new InvalidOptionError("abortSignal", "AbortSignal instance");
+    throw new InvalidOptionError(
+      "abortSignal",
+      "AbortSignal instance",
+    );
   }
 };
 
@@ -146,46 +151,68 @@ export const OptValidators = new Map([
 
 // #region Other Validators
 
-export function validateBytes(v: any, name?: string): asserts v is Uint8Array {
+export function validateBytes(
+  v: any,
+  name?: string,
+): asserts v is Uint8Array {
   if (!(v instanceof Uint8Array)) {
     throw new TypeError(
-      "Expected a [Uint8Array]." + (name ? ` (${name})` : "")
+      "Expected a [Uint8Array]." + (name ? ` (${name})` : ""),
     );
   }
 }
 
-export function validateText(v: any, name?: string): asserts v is string {
+export function validateText(
+  v: any,
+  name?: string,
+): asserts v is string {
   if (typeof v !== "string") {
-    throw new TypeError("Expected a [string]." + (name ? ` (${name})` : ""));
+    throw new TypeError(
+      "Expected a [string]." + (name ? ` (${name})` : ""),
+    );
   }
 }
 
-export function validateNumber(v: any, name?: string): asserts v is number {
+export function validateNumber(
+  v: any,
+  name?: string,
+): asserts v is number {
   if (typeof v !== "number" || Number.isNaN(v)) {
-    throw new TypeError("Expected a [number]." + (name ? ` (${name})` : ""));
+    throw new TypeError(
+      "Expected a [number]." + (name ? ` (${name})` : ""),
+    );
   }
 }
 
 export function validatePositiveNumber(
   v: any,
-  name?: string
+  name?: string,
 ): asserts v is number {
   if (typeof v !== "number" || Number.isNaN(v) || v <= 0) {
     throw new TypeError(
-      "Expected a [positive number]." + (name ? ` (${name})` : "")
+      "Expected a [positive number]." + (name ? ` (${name})` : ""),
     );
   }
 }
 
-export function validateInteger(v: any, name?: string): asserts v is number {
-  if (typeof v !== "number" || Number.isNaN(v) || !Number.isInteger(v)) {
-    throw new TypeError("Expected a [integer]." + (name ? ` (${name})` : ""));
+export function validateInteger(
+  v: any,
+  name?: string,
+): asserts v is number {
+  if (
+    typeof v !== "number" ||
+    Number.isNaN(v) ||
+    !Number.isInteger(v)
+  ) {
+    throw new TypeError(
+      "Expected a [integer]." + (name ? ` (${name})` : ""),
+    );
   }
 }
 
 export function validatePositiveInteger(
   v: any,
-  name?: string
+  name?: string,
 ): asserts v is number {
   if (
     typeof v !== "number" ||
@@ -194,7 +221,7 @@ export function validatePositiveInteger(
     !Number.isInteger(v)
   ) {
     throw new TypeError(
-      "Expected a [positive integer]." + (name ? ` (${name})` : "")
+      "Expected a [positive integer]." + (name ? ` (${name})` : ""),
     );
   }
 }
@@ -228,7 +255,9 @@ export function validatePermissions(perms: FilePermission) {
       typeof perms.owner.write === "boolean";
 
     if (!isValid) {
-      throw new TypeError("Expected a [object] detailing permissions.");
+      throw new TypeError(
+        "Expected a [object] detailing permissions.",
+      );
     }
   }
 }

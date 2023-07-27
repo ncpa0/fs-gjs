@@ -8,7 +8,11 @@ import type {
   FileCreateFlagOptions,
   FileQueryFlagOptions,
 } from "./flags";
-import { getCopyFileFlag, getCreateFileFlag, getQueryFileFlag } from "./flags";
+import {
+  getCopyFileFlag,
+  getCreateFileFlag,
+  getQueryFileFlag,
+} from "./flags";
 import type { IOStreamOptions, IOStreamType } from "./io-stream";
 import { IOStream } from "./io-stream";
 import { OptionsResolver } from "./option-resolver";
@@ -33,11 +37,11 @@ type Mixin<T extends any[]> = T["length"] extends 0
 
 interface FsOperationOptions {
   /**
-   * An instance of the AbortSignal class, it requires an
-   * AbortSignal` class to be available in the running
-   * environment. (as of version 1.74.2, gjs does not have
-   * AbortSignal or AbortController implemented, so a polyfill
-   * will be required for this option to work)
+   * An instance of the AbortSignal class, it requires an AbortSignal`
+   * class to be available in the running environment. (as of version
+   * 1.74.2, gjs does not have AbortSignal or AbortController
+   * implemented, so a polyfill will be required for this option to
+   * work)
    */
   abortSignal?: AbortSignal;
 }
@@ -65,8 +69,8 @@ interface ListFilenamesOptions
 
 interface ListDirOptions extends Mixin<[ListFilenamesOptions]> {
   /**
-   * A list of additional attributes to query for each file.
-   * These attributes can be then later accessed via the
+   * A list of additional attributes to query for each file. These
+   * attributes can be then later accessed via the
    * `file._gioInfo.get_attribute_*` methods.
    */
   attributes?: string[];
@@ -77,8 +81,8 @@ interface FileInfoOptions
     [FsOperationOptions, IOOperationOptions, FileQueryFlagOptions]
   > {
   /**
-   * A list of additional attributes to query for each file.
-   * These attributes can be then later accessed via the
+   * A list of additional attributes to query for each file. These
+   * attributes can be then later accessed via the
    * `file._gioInfo.get_attribute_*` methods.
    */
   attributes?: string[];
@@ -106,12 +110,11 @@ interface WriteFileOptions
   > {
   etag?: string;
   /**
-   * When enabled, if a file already exists at the given path, it
-   * will be backed up before being overwritten.
+   * When enabled, if a file already exists at the given path, it will
+   * be backed up before being overwritten.
    *
-   * Created backup can be found at the same directory as the
-   * original file, with the same name, but with a "~" appended
-   * at the end.
+   * Created backup can be found at the same directory as the original
+   * file, with the same name, but with a "~" appended at the end.
    */
   makeBackup?: boolean;
 }
@@ -126,30 +129,35 @@ interface AppendTextFileOptions extends Mixin<[AppendFileOptions]> {}
 interface WriteTextFileOptions extends Mixin<[WriteFileOptions]> {}
 
 interface MoveFileOptions
-  extends Mixin<[FsOperationOptions, IOOperationOptions, FileCopyFlagOptions]> {
+  extends Mixin<
+    [FsOperationOptions, IOOperationOptions, FileCopyFlagOptions]
+  > {
   /**
-   * As of version 1.74.2, gjs is unable to handle the
-   * `onProgress` callbacks for async IO operations as those are
-   * called from other threads. It is advised not to use this
-   * option at this time.
+   * As of version 1.74.2, gjs is unable to handle the `onProgress`
+   * callbacks for async IO operations as those are called from other
+   * threads. It is advised not to use this option at this time.
    */
-  onProgress?: (current_num_bytes: number, total_num_bytes: number) => void;
+  onProgress?: (
+    current_num_bytes: number,
+    total_num_bytes: number,
+  ) => void;
 }
 
 interface CopyFileOptions
   extends Mixin<[MoveFileOptions, FileCopyFlagOptions]> {}
 
 interface DeleteFileOptions
-  extends Mixin<[FileInfoOptions, IOOperationOptions, ListDirOptions]> {
+  extends Mixin<
+    [FileInfoOptions, IOOperationOptions, ListDirOptions]
+  > {
   /**
-   * When enabled, instead of permanently deleting the file, it
-   * will be moved to the trash directory.
+   * When enabled, instead of permanently deleting the file, it will
+   * be moved to the trash directory.
    */
   trash?: boolean;
   /**
-   * When enabled, if a file is a directory, all of the files
-   * inside it will be deleted before deleting the directory
-   * itself.
+   * When enabled, if a file is a directory, all of the files inside
+   * it will be deleted before deleting the directory itself.
    */
   recursive?: boolean;
 }
@@ -172,8 +180,8 @@ interface ChownOptions
 
 interface FsOptions {
   /**
-   * Path to a directory which will be used as a base for all
-   * calls on this Fs instance.
+   * Path to a directory which will be used as a base for all calls on
+   * this Fs instance.
    *
    * @example
    *   const fs = new Fs({ cwd: "/home/user" });
@@ -194,27 +202,43 @@ class Fs {
 
   private static globalInstance = new Fs();
 
-  /** Creates a new Gio.File instance for the given path. */
+  /**
+   * Creates a new Gio.File instance for the given path.
+   */
   public static file(path: string, cwd?: string) {
     return Fs.globalInstance.file(path, cwd);
   }
 
-  /** Checks if a file or directory exists. */
-  public static fileExists(path: string, options?: FileExistsOptions) {
+  /**
+   * Checks if a file or directory exists.
+   */
+  public static fileExists(
+    path: string,
+    options?: FileExistsOptions,
+  ) {
     return Fs.globalInstance.fileExists(path, options);
   }
 
-  /** Lists all the contents of a directory. */
+  /**
+   * Lists all the contents of a directory.
+   */
   public static listDir(path: string, options?: ListDirOptions) {
     return Fs.globalInstance.listDir(path, options);
   }
 
-  /** Lists all the contents of a directory as file names. */
-  public static listFilenames(path: string, options?: ListFilenamesOptions) {
+  /**
+   * Lists all the contents of a directory as file names.
+   */
+  public static listFilenames(
+    path: string,
+    options?: ListFilenamesOptions,
+  ) {
     return Fs.globalInstance.listFilenames(path, options);
   }
 
-  /** Gets information about a specific file or directory. */
+  /**
+   * Gets information about a specific file or directory.
+   */
   public static fileInfo(path: string, options?: FileInfoOptions) {
     return Fs.globalInstance.fileInfo(path, options);
   }
@@ -230,80 +254,93 @@ class Fs {
 
   /**
    * Reads the content of a file under the given path using the
-   * `readFile()` method and decodes that content to string using
-   * the given encoding.
+   * `readFile()` method and decodes that content to string using the
+   * given encoding.
    */
-  public static readTextFile(path: string, options?: ReadTextFileOptions) {
+  public static readTextFile(
+    path: string,
+    options?: ReadTextFileOptions,
+  ) {
     return Fs.globalInstance.readTextFile(path, options);
   }
 
-  /** Writes the given data to a file under the given path. */
+  /**
+   * Writes the given data to a file under the given path.
+   */
   public static writeFile(
     path: string,
     data: Uint8Array,
-    options?: WriteFileOptions
+    options?: WriteFileOptions,
   ) {
     return Fs.globalInstance.writeFile(path, data, options);
   }
 
   /**
-   * Encodes given string into a byte array (UTF-8), and writes
-   * that data to a file under the given path using the
-   * `writeFile()` method.
+   * Encodes given string into a byte array (UTF-8), and writes that
+   * data to a file under the given path using the `writeFile()`
+   * method.
    */
   public static writeTextFile(
     path: string,
     data: string,
-    options?: WriteTextFileOptions
+    options?: WriteTextFileOptions,
   ) {
     return Fs.globalInstance.writeTextFile(path, data, options);
   }
 
-  /** Appends the given data to a file under the given path. */
+  /**
+   * Appends the given data to a file under the given path.
+   */
   public static appendFile(
     path: string,
     data: Uint8Array,
-    options?: AppendFileOptions
+    options?: AppendFileOptions,
   ) {
     return Fs.globalInstance.appendFile(path, data, options);
   }
 
   /**
-   * Encodes given string into a byte array (UTF-8), and appends
-   * that data to a file under the given path using the
-   * `appendFile()` method.
+   * Encodes given string into a byte array (UTF-8), and appends that
+   * data to a file under the given path using the `appendFile()`
+   * method.
    */
   public static appendTextFile(
     path: string,
     data: string,
-    options?: AppendTextFileOptions
+    options?: AppendTextFileOptions,
   ) {
     return Fs.globalInstance.appendTextFile(path, data, options);
   }
 
-  /** Moves a file or directory from one path to another. */
+  /**
+   * Moves a file or directory from one path to another.
+   */
   public static moveFile(
     source: string,
     destination: string,
-    options?: MoveFileOptions
+    options?: MoveFileOptions,
   ) {
     return Fs.globalInstance.moveFile(source, destination, options);
   }
 
-  /** Alias for the `moveFile()` method. */
+  /**
+   * Alias for the `moveFile()` method.
+   */
   public static renameFile(
     source: string,
     destination: string,
-    options?: MoveFileOptions
+    options?: MoveFileOptions,
   ) {
     return Fs.globalInstance.renameFile(source, destination, options);
   }
 
-  /** Copies a file or directory from one path to another. */
+  /**
+   * Copies a file or directory from one path to another.
+   */
   public static copyFile(
     source: string,
     destination: string,
-    options?: CopyFileOptions
+    options?: CopyFileOptions,
   ) {
     return Fs.globalInstance.copyFile(source, destination, options);
   }
@@ -311,22 +348,27 @@ class Fs {
   /**
    * Deletes a file or directory from under the given path.
    *
-   * If `trash` is set to `true`, the file will be moved to the
-   * user's trash directory instead of being deleted.
+   * If `trash` is set to `true`, the file will be moved to the user's
+   * trash directory instead of being deleted.
    */
-  public static deleteFile(path: string, options?: DeleteFileOptions) {
+  public static deleteFile(
+    path: string,
+    options?: DeleteFileOptions,
+  ) {
     return Fs.globalInstance.deleteFile(path, options);
   }
 
-  /** Creates a new directory under the given path. */
+  /**
+   * Creates a new directory under the given path.
+   */
   public static makeDir(path: string, options?: MakeDirOptions) {
     return Fs.globalInstance.makeDir(path, options);
   }
 
   /**
-   * Creates a symbolic link file undef the path given in the
-   * first parameter, created link will point to a file or
-   * directory that's provided as the second parameter.
+   * Creates a symbolic link file undef the path given in the first
+   * parameter, created link will point to a file or directory that's
+   * provided as the second parameter.
    *
    * @param linkPath The path to the new link file.
    * @param pointingTo Link destination file.
@@ -335,7 +377,7 @@ class Fs {
   public static makeLink(
     linkPath: string,
     pointingTo: string,
-    options?: MakeLinkOptions
+    options?: MakeLinkOptions,
   ) {
     return Fs.globalInstance.makeLink(linkPath, pointingTo, options);
   }
@@ -345,25 +387,27 @@ class Fs {
    *
    * The provided mode can be either:
    *
-   * - A number representing the octal value of the permissions
-   *   (ex. `0o755`)
+   * - A number representing the octal value of the permissions (ex.
+   *   `0o755`)
    * - A string in the rwx format (ex. `rwxrw-r--`)
    * - An object describing all the permissions
    */
   public static chmod(
     path: string,
     mode: FilePermission,
-    options?: ChmodOptions
+    options?: ChmodOptions,
   ) {
     return Fs.globalInstance.chmod(path, mode, options);
   }
 
-  /** Changes the owner and group of a file or directory. */
+  /**
+   * Changes the owner and group of a file or directory.
+   */
   public static chown(
     path: string,
     uid: number,
     gid: number,
-    options?: ChownOptions
+    options?: ChownOptions,
   ) {
     return Fs.globalInstance.chown(path, uid, gid, options);
   }
@@ -371,14 +415,13 @@ class Fs {
   /**
    * Creates a new IOStream instance.
    *
-   * `type` parameter determines if the Stream should create a
-   * new file, open an existing one or overwrite an existing
-   * one.
+   * `type` parameter determines if the Stream should create a new
+   * file, open an existing one or overwrite an existing one.
    */
   public static openIOStream(
     path: string,
     type: IOStreamType,
-    options?: IOStreamOptions
+    options?: IOStreamOptions,
   ) {
     return Fs.globalInstance.openFileIOStream(path, type, options);
   }
@@ -392,7 +435,10 @@ class Fs {
   constructor(options?: FsOptions) {
     this._cwd = options?.cwd ?? null;
 
-    this.resolvePath = sync("resolvePath", this.resolvePath.bind(this));
+    this.resolvePath = sync(
+      "resolvePath",
+      this.resolvePath.bind(this),
+    );
     this.file = sync("file", this.file.bind(this));
     this.fileExists = this.fileExists.bind(this);
     this.listDir = this.listDir.bind(this);
@@ -423,109 +469,138 @@ class Fs {
     return path;
   }
 
-  /** Creates a new Gio.File instance for the given path. */
+  /**
+   * Creates a new Gio.File instance for the given path.
+   */
   public file(path: string, cwd?: string) {
     return Gio.File.new_for_path(this.resolvePath(path, cwd));
   }
 
-  /** Checks if a file or directory exists. */
+  /**
+   * Checks if a file or directory exists.
+   */
   public fileExists(path: string, options?: FileExistsOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
 
-    return promise<boolean>("fileExists", opt.get("abortSignal"), (p) => {
-      const queryFlag = getQueryFileFlag(opt);
+    return promise<boolean>(
+      "fileExists",
+      opt.get("abortSignal"),
+      (p) => {
+        const queryFlag = getQueryFileFlag(opt);
 
-      file.query_info_async(
-        "standard::name",
-        queryFlag,
-        opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-        p.cancellable,
-        p.asyncCallback((_, result: Gio.AsyncResult) => {
-          try {
-            file.query_info_finish(result);
-            p.resolve(true);
-          } catch {
-            p.resolve(false);
-          }
-        })
-      );
-    });
+        file.query_info_async(
+          "standard::name",
+          queryFlag,
+          opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+          p.cancellable,
+          p.asyncCallback((_, result: Gio.AsyncResult) => {
+            try {
+              file.query_info_finish(result);
+              p.resolve(true);
+            } catch {
+              p.resolve(false);
+            }
+          }),
+        );
+      },
+    );
   }
 
-  /** Lists all the contents of a directory. */
+  /**
+   * Lists all the contents of a directory.
+   */
   public listDir(path: string, options?: ListDirOptions) {
     const dir = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
 
-    return promise<FileInfo[]>("listDir", opt.get("abortSignal"), async (p) => {
-      const ioPriority = opt.get("ioPriority", GLib.PRIORITY_DEFAULT);
-      const batchSize = opt.get("batchSize", DEFAULT_BATCH_SIZE);
+    return promise<FileInfo[]>(
+      "listDir",
+      opt.get("abortSignal"),
+      async (p) => {
+        const ioPriority = opt.get(
+          "ioPriority",
+          GLib.PRIORITY_DEFAULT,
+        );
+        const batchSize = opt.get("batchSize", DEFAULT_BATCH_SIZE);
 
-      const enumerator = await promise<Gio.FileEnumerator>(
-        "listDir",
-        opt.get("abortSignal"),
-        (p2) => {
-          const queryFlag = getQueryFileFlag(opt);
+        const enumerator = await promise<Gio.FileEnumerator>(
+          "listDir",
+          opt.get("abortSignal"),
+          (p2) => {
+            const queryFlag = getQueryFileFlag(opt);
 
-          dir.enumerate_children_async(
-            getAttributes(opt.get("attributes", [])),
-            queryFlag,
-            ioPriority,
-            p2.cancellable,
-            p2.asyncCallback((_, result: Gio.AsyncResult) => {
-              const enumerator = dir.enumerate_children_finish(result);
-              if (enumerator) {
-                p2.resolve(enumerator);
-              } else {
-                p2.reject(
-                  new FsError(`Failed to list directory: ${dir.get_path()}`)
-                );
-              }
-            })
+            dir.enumerate_children_async(
+              getAttributes(opt.get("attributes", [])),
+              queryFlag,
+              ioPriority,
+              p2.cancellable,
+              p2.asyncCallback((_, result: Gio.AsyncResult) => {
+                const enumerator =
+                  dir.enumerate_children_finish(result);
+                if (enumerator) {
+                  p2.resolve(enumerator);
+                } else {
+                  p2.reject(
+                    new FsError(
+                      `Failed to list directory: ${dir.get_path()}`,
+                    ),
+                  );
+                }
+              }),
+            );
+          },
+        );
+
+        const getNextBatch = () =>
+          promise<Gio.FileInfo[]>(
+            "listDir",
+            opt.get("abortSignal"),
+            (p3) => {
+              enumerator.next_files_async(
+                batchSize,
+                ioPriority,
+                p3.cancellable,
+                p3.asyncCallback((_, result: Gio.AsyncResult) => {
+                  p3.resolve(
+                    enumerator.next_files_finish(result) ?? [],
+                  );
+                }),
+              );
+            },
+          );
+
+        const allFiles: FileInfo[] = [];
+
+        while (true) {
+          p.breakpoint();
+
+          const nextBatch = await getNextBatch();
+
+          if (nextBatch.length === 0) {
+            break;
+          }
+
+          allFiles.push(
+            ...nextBatch.map(
+              (f) =>
+                new FileInfo(join(dir.get_path()!, f.get_name()), f),
+            ),
           );
         }
-      );
 
-      const getNextBatch = () =>
-        promise<Gio.FileInfo[]>("listDir", opt.get("abortSignal"), (p3) => {
-          enumerator.next_files_async(
-            batchSize,
-            ioPriority,
-            p3.cancellable,
-            p3.asyncCallback((_, result: Gio.AsyncResult) => {
-              p3.resolve(enumerator.next_files_finish(result) ?? []);
-            })
-          );
+        enumerator.close_async(ioPriority, null, (_, result) => {
+          enumerator.close_finish(result);
         });
 
-      const allFiles: FileInfo[] = [];
-
-      while (true) {
-        p.breakpoint();
-
-        const nextBatch = await getNextBatch();
-
-        if (nextBatch.length === 0) {
-          break;
-        }
-
-        allFiles.push(
-          ...nextBatch.map(
-            (f) => new FileInfo(join(dir.get_path()!, f.get_name()), f)
-          )
-        );
-      }
-
-      enumerator.close_async(ioPriority, null, (_, result) => {
-        enumerator.close_finish(result);
-      });
-
-      return p.resolve(allFiles);
-    });
+        return p.resolve(allFiles);
+      },
+    );
   }
 
-  /** Lists the names of all files inside of a directory. */
+  /**
+   * Lists the names of all files inside of a directory.
+   */
   public listFilenames(path: string, options?: ListFilenamesOptions) {
     const dir = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
@@ -534,7 +609,10 @@ class Fs {
       "listFilenames",
       opt.get("abortSignal"),
       async (p) => {
-        const ioPriority = opt.get("ioPriority", GLib.PRIORITY_DEFAULT);
+        const ioPriority = opt.get(
+          "ioPriority",
+          GLib.PRIORITY_DEFAULT,
+        );
         const batchSize = opt.get("batchSize", DEFAULT_BATCH_SIZE);
 
         const enumerator = await promise<Gio.FileEnumerator>(
@@ -549,30 +627,39 @@ class Fs {
               ioPriority,
               p2.cancellable,
               p2.asyncCallback((_, result: Gio.AsyncResult) => {
-                const enumerator = dir.enumerate_children_finish(result);
+                const enumerator =
+                  dir.enumerate_children_finish(result);
                 if (enumerator) {
                   p2.resolve(enumerator);
                 } else {
                   p2.reject(
-                    new FsError(`Failed to list filenames: ${dir.get_path()}`)
+                    new FsError(
+                      `Failed to list filenames: ${dir.get_path()}`,
+                    ),
                   );
                 }
-              })
+              }),
             );
-          }
+          },
         );
 
         const getNextBatch = () =>
-          promise<Gio.FileInfo[]>("listDir", opt.get("abortSignal"), (p3) => {
-            enumerator.next_files_async(
-              batchSize,
-              ioPriority,
-              p3.cancellable,
-              p3.asyncCallback((_, result: Gio.AsyncResult) => {
-                p3.resolve(enumerator.next_files_finish(result) ?? []);
-              })
-            );
-          });
+          promise<Gio.FileInfo[]>(
+            "listDir",
+            opt.get("abortSignal"),
+            (p3) => {
+              enumerator.next_files_async(
+                batchSize,
+                ioPriority,
+                p3.cancellable,
+                p3.asyncCallback((_, result: Gio.AsyncResult) => {
+                  p3.resolve(
+                    enumerator.next_files_finish(result) ?? [],
+                  );
+                }),
+              );
+            },
+          );
 
         const allFiles: string[] = [];
 
@@ -593,35 +680,43 @@ class Fs {
         });
 
         return p.resolve(allFiles);
-      }
+      },
     );
   }
 
-  /** Gets information about a specific file or directory. */
+  /**
+   * Gets information about a specific file or directory.
+   */
   public fileInfo(path: string, options?: FileInfoOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
 
-    return promise<FileInfo>("fileInfo", opt.get("abortSignal"), (p) => {
-      const queryFlag = getQueryFileFlag(opt);
+    return promise<FileInfo>(
+      "fileInfo",
+      opt.get("abortSignal"),
+      (p) => {
+        const queryFlag = getQueryFileFlag(opt);
 
-      file.query_info_async(
-        getAttributes(opt.get("attributes", [])),
-        queryFlag,
-        opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-        p.cancellable,
-        p.asyncCallback((_, result: Gio.AsyncResult) => {
-          const ginfo = file.query_info_finish(result);
-          if (ginfo) {
-            p.resolve(new FileInfo(file.get_path()!, ginfo));
-          } else {
-            p.reject(
-              new FsError(`Failed to get file info: ${file.get_path()}`)
-            );
-          }
-        })
-      );
-    });
+        file.query_info_async(
+          getAttributes(opt.get("attributes", [])),
+          queryFlag,
+          opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+          p.cancellable,
+          p.asyncCallback((_, result: Gio.AsyncResult) => {
+            const ginfo = file.query_info_finish(result);
+            if (ginfo) {
+              p.resolve(new FileInfo(file.get_path()!, ginfo));
+            } else {
+              p.reject(
+                new FsError(
+                  `Failed to get file info: ${file.get_path()}`,
+                ),
+              );
+            }
+          }),
+        );
+      },
+    );
   }
 
   /**
@@ -633,25 +728,33 @@ class Fs {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
 
-    return promise<Uint8Array>("readFile", opt.get("abortSignal"), (p) => {
-      file.load_bytes_async(
-        p.cancellable,
-        p.asyncCallback((_, result: Gio.AsyncResult) => {
-          const [bytes] = file.load_bytes_finish(result);
-          if (bytes != null) {
-            p.resolve(bytes.unref_to_array());
-          } else {
-            p.reject(new FsError(`Failed to read file: ${file.get_path()}`));
-          }
-        })
-      );
-    });
+    return promise<Uint8Array>(
+      "readFile",
+      opt.get("abortSignal"),
+      (p) => {
+        file.load_bytes_async(
+          p.cancellable,
+          p.asyncCallback((_, result: Gio.AsyncResult) => {
+            const [bytes] = file.load_bytes_finish(result);
+            if (bytes != null) {
+              p.resolve(bytes.unref_to_array());
+            } else {
+              p.reject(
+                new FsError(
+                  `Failed to read file: ${file.get_path()}`,
+                ),
+              );
+            }
+          }),
+        );
+      },
+    );
   }
 
   /**
    * Reads the content of a file under the given path using the
-   * `readFile()` method and decodes that content to string using
-   * the given encoding.
+   * `readFile()` method and decodes that content to string using the
+   * given encoding.
    */
   public readTextFile(path: string, options?: ReadTextFileOptions) {
     const opt = OptionsResolver(options, OptValidators);
@@ -665,15 +768,17 @@ class Fs {
         const contents = await this.readFile(path, options);
 
         p.resolve(decoder.decode(contents));
-      }
+      },
     );
   }
 
-  /** Writes the given data to a file under the given path. */
+  /**
+   * Writes the given data to a file under the given path.
+   */
   public writeFile(
     path: string,
     contents: Uint8Array,
-    options?: WriteFileOptions
+    options?: WriteFileOptions,
   ) {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
@@ -701,12 +806,14 @@ class Fs {
                   p2.resolve(stream);
                 } else {
                   p2.reject(
-                    new FsError(`Failed to write file: ${file.get_path()}`)
+                    new FsError(
+                      `Failed to write file: ${file.get_path()}`,
+                    ),
                   );
                 }
-              })
+              }),
             );
-          }
+          },
         );
 
         try {
@@ -723,7 +830,7 @@ class Fs {
                 } else {
                   p3.reject(new FsError("Failed to close stream."));
                 }
-              })
+              }),
             );
           });
         }
@@ -743,147 +850,176 @@ class Fs {
             if (success) {
               p.resolve();
             } else {
-              p.reject(new FsError(`Failed to write file: ${file.get_path()}`));
+              p.reject(
+                new FsError(
+                  `Failed to write file: ${file.get_path()}`,
+                ),
+              );
             }
-          })
+          }),
         );
       }
     });
   }
 
   /**
-   * Encodes given string into a byte array (UTF-8), and writes
-   * that data to a file under the given path using the
-   * `writeFile()` method.
+   * Encodes given string into a byte array (UTF-8), and writes that
+   * data to a file under the given path using the `writeFile()`
+   * method.
    */
   public writeTextFile(
     path: string,
     contents: string,
-    options?: WriteTextFileOptions
+    options?: WriteTextFileOptions,
   ) {
     const opt = OptionsResolver(options, OptValidators);
 
-    return promise("writeTextFile", opt.get("abortSignal"), async (p) => {
-      validateText(contents);
+    return promise(
+      "writeTextFile",
+      opt.get("abortSignal"),
+      async (p) => {
+        validateText(contents);
 
-      const encoder = new TextEncoder();
-      const data = encoder.encode(contents);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(contents);
 
-      await this.writeFile(path, data, options);
+        await this.writeFile(path, data, options);
 
-      p.resolve();
-    });
+        p.resolve();
+      },
+    );
   }
 
-  /** Appends the given data to a file under the given path. */
+  /**
+   * Appends the given data to a file under the given path.
+   */
   public appendFile(
     path: string,
     contents: Uint8Array,
-    options?: AppendFileOptions
+    options?: AppendFileOptions,
   ) {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
 
-    return promise("appendFile", opt.get("abortSignal"), async (p) => {
-      validateBytes(contents);
+    return promise(
+      "appendFile",
+      opt.get("abortSignal"),
+      async (p) => {
+        validateBytes(contents);
 
-      if (contents.byteLength === 0) {
-        return p.resolve(); // appending empty buffer is a no-op
-      }
-
-      const stream = await promise<Gio.FileOutputStream>(
-        "appendFile",
-        opt.get("abortSignal"),
-        (p2) => {
-          const createFlag = getCreateFileFlag(opt);
-
-          file.append_to_async(
-            createFlag,
-            opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-            p2.cancellable,
-            p2.asyncCallback((_, result: Gio.AsyncResult) => {
-              const outputStream = file.append_to_finish(result);
-              if (outputStream) {
-                p2.resolve(outputStream);
-              } else {
-                p2.reject(
-                  new FsError(`Failed to append to file: ${file.get_path()}`)
-                );
-              }
-            })
-          );
+        if (contents.byteLength === 0) {
+          return p.resolve(); // appending empty buffer is a no-op
         }
-      );
 
-      p.breakpoint();
+        const stream = await promise<Gio.FileOutputStream>(
+          "appendFile",
+          opt.get("abortSignal"),
+          (p2) => {
+            const createFlag = getCreateFileFlag(opt);
 
-      try {
-        await promise("appendFile", opt.get("abortSignal"), (p3) => {
-          const bytes = GLib.Bytes.new(contents);
-          stream.write_bytes_async(
-            bytes,
-            opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-            p3.cancellable,
-            p3.asyncCallback((_, result: Gio.AsyncResult) => {
-              const bytesWritten = stream.write_bytes_finish(result);
-              if (bytesWritten === -1) {
-                p3.reject(new FsError("Failed to write to stream."));
-              } else {
-                p3.resolve();
-              }
-            })
+            file.append_to_async(
+              createFlag,
+              opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+              p2.cancellable,
+              p2.asyncCallback((_, result: Gio.AsyncResult) => {
+                const outputStream = file.append_to_finish(result);
+                if (outputStream) {
+                  p2.resolve(outputStream);
+                } else {
+                  p2.reject(
+                    new FsError(
+                      `Failed to append to file: ${file.get_path()}`,
+                    ),
+                  );
+                }
+              }),
+            );
+          },
+        );
+
+        p.breakpoint();
+
+        try {
+          await promise(
+            "appendFile",
+            opt.get("abortSignal"),
+            (p3) => {
+              const bytes = GLib.Bytes.new(contents);
+              stream.write_bytes_async(
+                bytes,
+                opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+                p3.cancellable,
+                p3.asyncCallback((_, result: Gio.AsyncResult) => {
+                  const bytesWritten =
+                    stream.write_bytes_finish(result);
+                  if (bytesWritten === -1) {
+                    p3.reject(
+                      new FsError("Failed to write to stream."),
+                    );
+                  } else {
+                    p3.resolve();
+                  }
+                }),
+              );
+            },
           );
-        });
-      } finally {
-        await promise("appendFile", null, (p4) => {
-          stream.close_async(
-            opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-            null,
-            p4.asyncCallback((_, result: Gio.AsyncResult) => {
-              const success = stream.close_finish(result);
-              if (success) {
-                p4.resolve();
-              } else {
-                p4.reject(new FsError("Failed to close stream."));
-              }
-            })
-          );
-        });
-      }
+        } finally {
+          await promise("appendFile", null, (p4) => {
+            stream.close_async(
+              opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+              null,
+              p4.asyncCallback((_, result: Gio.AsyncResult) => {
+                const success = stream.close_finish(result);
+                if (success) {
+                  p4.resolve();
+                } else {
+                  p4.reject(new FsError("Failed to close stream."));
+                }
+              }),
+            );
+          });
+        }
 
-      p.resolve();
-    });
+        p.resolve();
+      },
+    );
   }
 
   /**
-   * Encodes given string into a byte array (UTF-8), and appends
-   * that data to a file under the given path using the
-   * `appendFile()` method.
+   * Encodes given string into a byte array (UTF-8), and appends that
+   * data to a file under the given path using the `appendFile()`
+   * method.
    */
   public appendTextFile(
     path: string,
     contents: string,
-    options?: AppendTextFileOptions
+    options?: AppendTextFileOptions,
   ) {
     const opt = OptionsResolver(options, OptValidators);
 
-    return promise("appendTextFile", opt.get("abortSignal"), async (p) => {
-      validateText(contents);
+    return promise(
+      "appendTextFile",
+      opt.get("abortSignal"),
+      async (p) => {
+        validateText(contents);
 
-      const encoder = new TextEncoder();
-      const data = encoder.encode(contents);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(contents);
 
-      await this.appendFile(path, data, options);
+        await this.appendFile(path, data, options);
 
-      p.resolve();
-    });
+        p.resolve();
+      },
+    );
   }
 
-  /** Moves a file or directory from one path to another. */
+  /**
+   * Moves a file or directory from one path to another.
+   */
   public moveFile(
     sourcePath: string,
     destinationPath: string,
-    options?: MoveFileOptions
+    options?: MoveFileOptions,
   ) {
     const oldFile = this.file(sourcePath);
     const newFile = this.file(destinationPath);
@@ -905,29 +1041,33 @@ class Fs {
           } else {
             p.reject(
               new FsError(
-                `Failed to move file: ${oldFile.get_path()} -> ${newFile.get_path()}`
-              )
+                `Failed to move file: ${oldFile.get_path()} -> ${newFile.get_path()}`,
+              ),
             );
           }
-        })
+        }),
       );
     });
   }
 
-  /** Alias for the `moveFile()` method. */
+  /**
+   * Alias for the `moveFile()` method.
+   */
   public renameFile(
     sourcePath: string,
     destinationPath: string,
-    options?: MoveFileOptions
+    options?: MoveFileOptions,
   ) {
     return this.moveFile(sourcePath, destinationPath, options);
   }
 
-  /** Copies a file or directory from one path to another. */
+  /**
+   * Copies a file or directory from one path to another.
+   */
   public copyFile(
     sourcePath: string,
     destinationPath: string,
-    options?: CopyFileOptions
+    options?: CopyFileOptions,
   ) {
     const srcFile = this.file(sourcePath);
     const destFile = this.file(destinationPath);
@@ -950,11 +1090,11 @@ class Fs {
           } else {
             p.reject(
               new FsError(
-                `Failed to copy file: ${srcFile.get_path()} -> ${destFile.get_path()}`
-              )
+                `Failed to copy file: ${srcFile.get_path()} -> ${destFile.get_path()}`,
+              ),
             );
           }
-        })
+        }),
       );
     });
   }
@@ -962,67 +1102,81 @@ class Fs {
   /**
    * Deletes a file or directory from under the given path.
    *
-   * If `trash` is set to `true`, the file will be moved to the
-   * user's trash directory instead of being deleted.
+   * If `trash` is set to `true`, the file will be moved to the user's
+   * trash directory instead of being deleted.
    */
   public deleteFile(path: string, options?: DeleteFileOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
     opt.setDefault("followSymlinks", false);
 
-    return promise("deleteFile", opt.get("abortSignal"), async (p) => {
-      if (opt.get("trash", false)) {
-        file.trash_async(
+    return promise(
+      "deleteFile",
+      opt.get("abortSignal"),
+      async (p) => {
+        if (opt.get("trash", false)) {
+          file.trash_async(
+            opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+            p.cancellable,
+            p.asyncCallback((_, result: Gio.AsyncResult) => {
+              const success = file.trash_finish(result);
+              if (success) {
+                p.resolve();
+              } else {
+                p.reject(
+                  new FsError(
+                    `Failed to trash file: ${file.get_path()}`,
+                  ),
+                );
+              }
+            }),
+          );
+
+          return;
+        }
+
+        if (
+          opt.get("recursive", false) &&
+          (await this.fileInfo(path, options)).isDirectory
+        ) {
+          p.breakpoint();
+
+          const files = await this.listFilenames(path, options);
+
+          p.breakpoint();
+
+          await Promise.all(
+            files.map((filename) =>
+              this.deleteFile(join(path, filename), options),
+            ),
+          );
+        }
+
+        p.breakpoint();
+
+        file.delete_async(
           opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
           p.cancellable,
           p.asyncCallback((_, result: Gio.AsyncResult) => {
-            const success = file.trash_finish(result);
+            const success = file.delete_finish(result);
             if (success) {
               p.resolve();
             } else {
-              p.reject(new FsError(`Failed to trash file: ${file.get_path()}`));
+              p.reject(
+                new FsError(
+                  `Failed to delete file: ${file.get_path()}`,
+                ),
+              );
             }
-          })
+          }),
         );
-
-        return;
-      }
-
-      if (
-        opt.get("recursive", false) &&
-        (await this.fileInfo(path, options)).isDirectory
-      ) {
-        p.breakpoint();
-
-        const files = await this.listFilenames(path, options);
-
-        p.breakpoint();
-
-        await Promise.all(
-          files.map((filename) =>
-            this.deleteFile(join(path, filename), options)
-          )
-        );
-      }
-
-      p.breakpoint();
-
-      file.delete_async(
-        opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-        p.cancellable,
-        p.asyncCallback((_, result: Gio.AsyncResult) => {
-          const success = file.delete_finish(result);
-          if (success) {
-            p.resolve();
-          } else {
-            p.reject(new FsError(`Failed to delete file: ${file.get_path()}`));
-          }
-        })
-      );
-    });
+      },
+    );
   }
 
-  /** Creates a new directory under the given path. */
+  /**
+   * Creates a new directory under the given path.
+   */
   public makeDir(path: string, options?: MakeDirOptions) {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
@@ -1037,18 +1191,20 @@ class Fs {
             p.resolve();
           } else {
             p.reject(
-              new FsError(`Failed to make directory: ${file.get_path()}`)
+              new FsError(
+                `Failed to make directory: ${file.get_path()}`,
+              ),
             );
           }
-        })
+        }),
       );
     });
   }
 
   /**
-   * Creates a symbolic link file undef the path given in the
-   * first parameter, created link will point to a file or
-   * directory that's provided as the second parameter.
+   * Creates a symbolic link file undef the path given in the first
+   * parameter, created link will point to a file or directory that's
+   * provided as the second parameter.
    *
    * @param linkPath The path to the new link file.
    * @param pointingTo Link destination file.
@@ -1057,7 +1213,7 @@ class Fs {
   public makeLink(
     linkPath: string,
     pointingTo: string,
-    option?: MakeLinkOptions
+    option?: MakeLinkOptions,
   ) {
     const linkFile = this.file(linkPath);
     const dest = this.resolvePath(pointingTo);
@@ -1075,11 +1231,11 @@ class Fs {
           } else {
             p.reject(
               new FsError(
-                `Failed to create symbolic link: ${linkFile.get_path()} -> ${dest}`
-              )
+                `Failed to create symbolic link: ${linkFile.get_path()} -> ${dest}`,
+              ),
             );
           }
-        })
+        }),
       );
     });
   }
@@ -1089,12 +1245,16 @@ class Fs {
    *
    * The provided mode can be either:
    *
-   * - A number representing the octal value of the permissions
-   *   (ex. `0o755`)
+   * - A number representing the octal value of the permissions (ex.
+   *   `0o755`)
    * - A string in the rwx format (ex. `rwxrw-r--`)
    * - An object describing all the permissions
    */
-  public chmod(path: string, mode: FilePermission, options?: ChmodOptions) {
+  public chmod(
+    path: string,
+    mode: FilePermission,
+    options?: ChmodOptions,
+  ) {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
 
@@ -1104,7 +1264,10 @@ class Fs {
       const queryFlag = getQueryFileFlag(opt);
 
       const info = Gio.FileInfo.new();
-      info.set_attribute_uint32("unix::mode", parseFilePermission(mode));
+      info.set_attribute_uint32(
+        "unix::mode",
+        parseFilePermission(mode),
+      );
 
       file.set_attributes_async(
         info,
@@ -1118,17 +1281,24 @@ class Fs {
           } else {
             p.reject(
               new FsError(
-                `Failed to change file permissions: ${file.get_path()}`
-              )
+                `Failed to change file permissions: ${file.get_path()}`,
+              ),
             );
           }
-        })
+        }),
       );
     });
   }
 
-  /** Changes the owner and group of a file or directory. */
-  public chown(path: string, uid: number, gid: number, options?: ChownOptions) {
+  /**
+   * Changes the owner and group of a file or directory.
+   */
+  public chown(
+    path: string,
+    uid: number,
+    gid: number,
+    options?: ChownOptions,
+  ) {
     const file = this.file(path);
     const opt = OptionsResolver(options, OptValidators);
 
@@ -1154,10 +1324,12 @@ class Fs {
             p.resolve();
           } else {
             p.reject(
-              new FsError(`Failed to change file owner: ${file.get_path()}`)
+              new FsError(
+                `Failed to change file owner: ${file.get_path()}`,
+              ),
             );
           }
-        })
+        }),
       );
     });
   }
@@ -1165,19 +1337,18 @@ class Fs {
   /**
    * Creates a new IOStream instance.
    *
-   * `type` parameter determines if the Stream should create a
-   * new file, open an existing one or overwrite an existing
-   * one.
+   * `type` parameter determines if the Stream should create a new
+   * file, open an existing one or overwrite an existing one.
    */
   public openFileIOStream(
     path: string,
     type: IOStreamType,
-    options: IOStreamOptions = {}
+    options: IOStreamOptions = {},
   ) {
     return IOStream.openFile(
       path,
       type,
-      this._cwd ? { cwd: this._cwd, ...options } : options
+      this._cwd ? { cwd: this._cwd, ...options } : options,
     );
   }
 

@@ -27,7 +27,7 @@ class IOStream {
   static async openFile(
     path: string,
     type: IOStreamType,
-    options?: IOStreamOptions
+    options?: IOStreamOptions,
   ) {
     return promise<IOStream>("IOStream.openFile", null, async (p) => {
       const file = Fs.file(path, options?.cwd);
@@ -45,10 +45,15 @@ class IOStream {
   private _mutex = new Mutex();
   private _type!: IOStreamType;
 
-  private constructor(private gioFile: Gio.File, options?: IOStreamOptions) {
+  private constructor(
+    private gioFile: Gio.File,
+    options?: IOStreamOptions,
+  ) {
     this._options = OptionsResolver(options, OptValidators);
 
-    /** Options are validated on access */
+    /**
+     * Options are validated on access
+     */
     this._options.get("cwd");
     this._options.get("etag");
     this._options.get("ioPriority");
@@ -57,7 +62,9 @@ class IOStream {
     this._options.get("replace");
   }
 
-  /** The underlying Gio.FileIOStream. */
+  /**
+   * The underlying Gio.FileIOStream.
+   */
   public get _gioStream() {
     return this._stream!;
   }
@@ -75,8 +82,7 @@ class IOStream {
   }
 
   /**
-   * Whether the Output Stream is currently in the process of
-   * closing.
+   * Whether the Output Stream is currently in the process of closing.
    */
   public get isClosing() {
     return this._stream?.output_stream.is_closing();
@@ -99,16 +105,19 @@ class IOStream {
               opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
               null,
               p.asyncCallback((_, result: Gio.AsyncResult) => {
-                const stream = this.gioFile.create_readwrite_finish(result);
+                const stream =
+                  this.gioFile.create_readwrite_finish(result);
 
                 if (!stream) {
-                  p.reject(new FsError("Failed to create a new stream."));
+                  p.reject(
+                    new FsError("Failed to create a new stream."),
+                  );
                 } else {
                   p.resolve(stream);
                 }
-              })
+              }),
             );
-          }
+          },
         );
         return;
       case "REPLACE":
@@ -125,16 +134,19 @@ class IOStream {
               opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
               null,
               p.asyncCallback((_, result: Gio.AsyncResult) => {
-                const stream = this.gioFile.replace_readwrite_finish(result);
+                const stream =
+                  this.gioFile.replace_readwrite_finish(result);
 
                 if (!stream) {
-                  p.reject(new FsError("Failed to replace a new stream."));
+                  p.reject(
+                    new FsError("Failed to replace a new stream."),
+                  );
                 } else {
                   p.resolve(stream);
                 }
-              })
+              }),
             );
-          }
+          },
         );
         return;
       case "OPEN":
@@ -146,16 +158,19 @@ class IOStream {
               opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
               null,
               p.asyncCallback((_, result: Gio.AsyncResult) => {
-                const stream = this.gioFile.open_readwrite_finish(result);
+                const stream =
+                  this.gioFile.open_readwrite_finish(result);
 
                 if (!stream) {
-                  p.reject(new FsError("Failed to open a new stream."));
+                  p.reject(
+                    new FsError("Failed to open a new stream."),
+                  );
                 } else {
                   p.resolve(stream);
                 }
-              })
+              }),
             );
-          }
+          },
         );
         return;
     }
@@ -176,11 +191,11 @@ class IOStream {
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and returns the current cursor position.
+   * Waits for all the pending operations on the stream to complete,
+   * and returns the current cursor position.
    *
-   * @returns The (positive or zero) offset from the beginning of
-   *   the buffer, zero if the target is not seekable.
+   * @returns The (positive or zero) offset from the beginning of the
+   *   buffer, zero if the target is not seekable.
    */
   public async currentPosition() {
     return await promise<number>(
@@ -194,14 +209,14 @@ class IOStream {
         } finally {
           this._mutex.release();
         }
-      }
+      },
     );
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and moves the cursor position by the given offset,
-   * from it's current position.
+   * Waits for all the pending operations on the stream to complete,
+   * and moves the cursor position by the given offset, from it's
+   * current position.
    *
    * @param offset The offset from the current cursor position.
    */
@@ -213,7 +228,11 @@ class IOStream {
       this._ensureCanSeek();
 
       try {
-        const success = this._stream!.seek(offset, GLib.SeekType.CUR, null);
+        const success = this._stream!.seek(
+          offset,
+          GLib.SeekType.CUR,
+          null,
+        );
 
         if (!success) {
           throw new FsError("Failed to seek stream.");
@@ -227,9 +246,9 @@ class IOStream {
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and moves the cursor position by the given offset,
-   * from the end of the stream.
+   * Waits for all the pending operations on the stream to complete,
+   * and moves the cursor position by the given offset, from the end
+   * of the stream.
    *
    * @param offset The offset from the end of the stream.
    */
@@ -241,7 +260,11 @@ class IOStream {
       this._ensureCanSeek();
 
       try {
-        const success = this._stream!.seek(offset, GLib.SeekType.END, null);
+        const success = this._stream!.seek(
+          offset,
+          GLib.SeekType.END,
+          null,
+        );
 
         if (!success) {
           throw new FsError("Failed to seek stream.");
@@ -255,38 +278,45 @@ class IOStream {
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and moves the cursor position by the given offset,
-   * from the start of the stream.
+   * Waits for all the pending operations on the stream to complete,
+   * and moves the cursor position by the given offset, from the start
+   * of the stream.
    *
    * @param offset The offset from the start of the stream.
    */
   public async seekFromStart(offset: number) {
-    return await promise("IOStream.seekFromStart", null, async (p) => {
-      validateInteger(offset);
+    return await promise(
+      "IOStream.seekFromStart",
+      null,
+      async (p) => {
+        validateInteger(offset);
 
-      await this._mutex.acquire();
-      this._ensureCanSeek();
+        await this._mutex.acquire();
+        this._ensureCanSeek();
 
-      try {
-        const success = this._stream!.seek(offset, GLib.SeekType.SET, null);
+        try {
+          const success = this._stream!.seek(
+            offset,
+            GLib.SeekType.SET,
+            null,
+          );
 
-        if (!success) {
-          throw new FsError("Failed to seek stream.");
+          if (!success) {
+            throw new FsError("Failed to seek stream.");
+          }
+        } finally {
+          this._mutex.release();
         }
-      } finally {
-        this._mutex.release();
-      }
 
-      p.resolve();
-    });
+        p.resolve();
+      },
+    );
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and skips the given number of bytes, effectively
-   * moving the cursor position by the given offset, from it's
-   * current position.
+   * Waits for all the pending operations on the stream to complete,
+   * and skips the given number of bytes, effectively moving the
+   * cursor position by the given offset, from it's current position.
    *
    * @param byteCount The number of bytes to be skipped.
    * @returns The number of bytes skipped.
@@ -300,23 +330,27 @@ class IOStream {
       let bytesSkipped;
 
       try {
-        bytesSkipped = await promise<number>("IOStream.skip", null, (p2) => {
-          this._stream!.input_stream.skip_async(
-            byteCount,
-            this._options.get("ioPriority", GLib.PRIORITY_DEFAULT),
-            null,
-            p2.asyncCallback((_, result: Gio.AsyncResult) => {
-              const bytesSkipped =
-                this._stream!.input_stream.skip_finish(result);
+        bytesSkipped = await promise<number>(
+          "IOStream.skip",
+          null,
+          (p2) => {
+            this._stream!.input_stream.skip_async(
+              byteCount,
+              this._options.get("ioPriority", GLib.PRIORITY_DEFAULT),
+              null,
+              p2.asyncCallback((_, result: Gio.AsyncResult) => {
+                const bytesSkipped =
+                  this._stream!.input_stream.skip_finish(result);
 
-              if (bytesSkipped === -1) {
-                p2.reject(new FsError("Failed to skip bytes."));
-              } else {
-                p2.resolve(bytesSkipped);
-              }
-            })
-          );
-        });
+                if (bytesSkipped === -1) {
+                  p2.reject(new FsError("Failed to skip bytes."));
+                } else {
+                  p2.resolve(bytesSkipped);
+                }
+              }),
+            );
+          },
+        );
       } finally {
         this._mutex.release();
       }
@@ -326,178 +360,212 @@ class IOStream {
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and then writes the given content to the stream at
-   * the current cursor position.
+   * Waits for all the pending operations on the stream to complete,
+   * and then writes the given content to the stream at the current
+   * cursor position.
    *
    * @param content Array of bytes (`Uint8Array`) that is to be
    *   written.
    */
   public async write(content: Uint8Array) {
-    return await promise<number>("IOStream.write", null, async (p) => {
-      validateBytes(content);
+    return await promise<number>(
+      "IOStream.write",
+      null,
+      async (p) => {
+        validateBytes(content);
 
-      if (content.byteLength === 0) {
-        return p.resolve(0); // Nothing to write.
-      }
+        if (content.byteLength === 0) {
+          return p.resolve(0); // Nothing to write.
+        }
 
-      await this._mutex.acquire();
+        await this._mutex.acquire();
 
-      let bytesWritten: number;
+        let bytesWritten: number;
 
-      try {
-        const opt = this._options;
+        try {
+          const opt = this._options;
 
-        bytesWritten = await promise<number>("IOStream.write", null, (p2) => {
-          const bytes = GLib.Bytes.new(content);
-          this._stream!.output_stream.write_bytes_async(
-            bytes,
-            opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+          bytesWritten = await promise<number>(
+            "IOStream.write",
             null,
-            p2.asyncCallback((_, result: Gio.AsyncResult) => {
-              const bytesWritten =
-                this._stream!.output_stream.write_bytes_finish(result);
+            (p2) => {
+              const bytes = GLib.Bytes.new(content);
+              this._stream!.output_stream.write_bytes_async(
+                bytes,
+                opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+                null,
+                p2.asyncCallback((_, result: Gio.AsyncResult) => {
+                  const bytesWritten =
+                    this._stream!.output_stream.write_bytes_finish(
+                      result,
+                    );
 
-              if (bytesWritten === -1) {
-                p2.reject(new FsError("Failed to write to stream."));
-              } else {
-                p2.resolve(bytesWritten);
-              }
-            })
+                  if (bytesWritten === -1) {
+                    p2.reject(
+                      new FsError("Failed to write to stream."),
+                    );
+                  } else {
+                    p2.resolve(bytesWritten);
+                  }
+                }),
+              );
+            },
           );
-        });
-      } finally {
-        this._mutex.release();
-      }
+        } finally {
+          this._mutex.release();
+        }
 
-      p.resolve(bytesWritten);
-    });
+        p.resolve(bytesWritten);
+      },
+    );
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and then reads the given number of bytes starting
-   * from the current cursor position.
+   * Waits for all the pending operations on the stream to complete,
+   * and then reads the given number of bytes starting from the
+   * current cursor position.
    *
    * @param byteCount The number of bytes to read.
    * @returns Array of bytes read (`Uint8Array`)
    */
   public async read(byteCount: number) {
-    return await promise<Uint8Array>("IOStream.read", null, async (p) => {
-      validatePositiveInteger(byteCount);
+    return await promise<Uint8Array>(
+      "IOStream.read",
+      null,
+      async (p) => {
+        validatePositiveInteger(byteCount);
 
-      await this._mutex.acquire();
+        await this._mutex.acquire();
 
-      let bytes: Uint8Array;
+        let bytes: Uint8Array;
 
-      try {
-        const opt = this._options;
+        try {
+          const opt = this._options;
 
-        bytes = await promise<Uint8Array>("IOStream.read", null, (p2) => {
-          this._stream!.input_stream.read_bytes_async(
-            byteCount,
-            opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+          bytes = await promise<Uint8Array>(
+            "IOStream.read",
             null,
-            p2.asyncCallback((_, result: Gio.AsyncResult) => {
-              const bytes =
-                this._stream!.input_stream.read_bytes_finish(result);
+            (p2) => {
+              this._stream!.input_stream.read_bytes_async(
+                byteCount,
+                opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+                null,
+                p2.asyncCallback((_, result: Gio.AsyncResult) => {
+                  const bytes =
+                    this._stream!.input_stream.read_bytes_finish(
+                      result,
+                    );
 
-              if (bytes != null) {
-                p2.resolve(bytes.unref_to_array());
-              } else {
-                p2.reject(new FsError("Failed to read from stream."));
-              }
-            })
+                  if (bytes != null) {
+                    p2.resolve(bytes.unref_to_array());
+                  } else {
+                    p2.reject(
+                      new FsError("Failed to read from stream."),
+                    );
+                  }
+                }),
+              );
+            },
           );
-        });
-      } finally {
-        this._mutex.release();
-      }
+        } finally {
+          this._mutex.release();
+        }
 
-      p.resolve(bytes);
-    });
+        p.resolve(bytes);
+      },
+    );
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and then reads all remaining bytes from the
-   * stream.
+   * Waits for all the pending operations on the stream to complete,
+   * and then reads all remaining bytes from the stream.
    *
    * @param options Options for the operation.
    * @param options.chunkSize Howe many bytes to read at a time.
    */
   public async readAll(options?: { chunkSize?: number }) {
-    return await promise<Uint8Array>("IOStream.readAll", null, async (p) => {
-      const { chunkSize = 500000 } = options ?? {};
-      validatePositiveInteger(chunkSize);
+    return await promise<Uint8Array>(
+      "IOStream.readAll",
+      null,
+      async (p) => {
+        const { chunkSize = 500000 } = options ?? {};
+        validatePositiveInteger(chunkSize);
 
-      await this._mutex.acquire();
+        await this._mutex.acquire();
 
-      let bytes: Uint8Array;
+        let bytes: Uint8Array;
 
-      try {
-        const opt = this._options;
+        try {
+          const opt = this._options;
 
-        bytes = await promise<Uint8Array>(
-          "IOStream.readAll",
-          null,
-          async (p2) => {
-            let result = new Uint8Array([]);
+          bytes = await promise<Uint8Array>(
+            "IOStream.readAll",
+            null,
+            async (p2) => {
+              let result = new Uint8Array([]);
 
-            while (true) {
-              const nextBytes = await promise<Uint8Array>(
-                "IOStream.readAll",
-                null,
-                (p3) => {
-                  this._stream!.input_stream.read_bytes_async(
-                    chunkSize,
-                    opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
-                    null,
-                    p3.asyncCallback((_, result: Gio.AsyncResult) => {
-                      const bytes =
-                        this._stream!.input_stream.read_bytes_finish(result);
+              while (true) {
+                const nextBytes = await promise<Uint8Array>(
+                  "IOStream.readAll",
+                  null,
+                  (p3) => {
+                    this._stream!.input_stream.read_bytes_async(
+                      chunkSize,
+                      opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
+                      null,
+                      p3.asyncCallback(
+                        (_, result: Gio.AsyncResult) => {
+                          const bytes =
+                            this._stream!.input_stream.read_bytes_finish(
+                              result,
+                            );
 
-                      if (bytes != null) {
-                        p3.resolve(bytes.unref_to_array());
-                      } else {
-                        p3.reject(new FsError("Failed to read from stream."));
-                      }
-                    })
-                  );
-                }
-              );
-
-              if (nextBytes.byteLength === 0) {
-                break;
-              } else {
-                const newResult = new Uint8Array(
-                  result.byteLength + nextBytes.byteLength
+                          if (bytes != null) {
+                            p3.resolve(bytes.unref_to_array());
+                          } else {
+                            p3.reject(
+                              new FsError(
+                                "Failed to read from stream.",
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    );
+                  },
                 );
-                newResult.set(result);
-                newResult.set(nextBytes, result.byteLength);
-                result = newResult;
+
+                if (nextBytes.byteLength === 0) {
+                  break;
+                } else {
+                  const newResult = new Uint8Array(
+                    result.byteLength + nextBytes.byteLength,
+                  );
+                  newResult.set(result);
+                  newResult.set(nextBytes, result.byteLength);
+                  result = newResult;
+                }
               }
-            }
 
-            p2.resolve(result);
-          }
-        );
-      } finally {
-        this._mutex.release();
-      }
+              p2.resolve(result);
+            },
+          );
+        } finally {
+          this._mutex.release();
+        }
 
-      p.resolve(bytes);
-    });
+        p.resolve(bytes);
+      },
+    );
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and then truncates the stream to the given
-   * length.
+   * Waits for all the pending operations on the stream to complete,
+   * and then truncates the stream to the given length.
    *
-   * If the stream was previously larger than `length`, the extra
-   * data is discarded. If the stream was previously shorter than
-   * `length`, it is extended with NUL ('\0') bytes.
+   * If the stream was previously larger than `length`, the extra data
+   * is discarded. If the stream was previously shorter than `length`,
+   * it is extended with NUL ('\0') bytes.
    */
   public async truncate(length: number) {
     return await promise("IOStream.truncate", null, async (p) => {
@@ -531,17 +599,21 @@ class IOStream {
    *   await stream.finishPending(); // Waits for all above writes to finish.
    */
   public async finishPending() {
-    return await promise("IOStream.finishPending", null, async (p) => {
-      await this._mutex.acquire();
-      this._mutex.release();
-      p.resolve();
-    });
+    return await promise(
+      "IOStream.finishPending",
+      null,
+      async (p) => {
+        await this._mutex.acquire();
+        this._mutex.release();
+        p.resolve();
+      },
+    );
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and then forces an asynchronous write of all
-   * user-space buffered data.
+   * Waits for all the pending operations on the stream to complete,
+   * and then forces an asynchronous write of all user-space buffered
+   * data.
    */
   public async flush() {
     return await promise("IOStream.flush", null, async (p) => {
@@ -555,14 +627,15 @@ class IOStream {
             opt.get("ioPriority", GLib.PRIORITY_DEFAULT),
             null,
             p.asyncCallback((_, result: Gio.AsyncResult) => {
-              const success = this._stream!.output_stream.flush_finish(result);
+              const success =
+                this._stream!.output_stream.flush_finish(result);
 
               if (success) {
                 p.resolve();
               } else {
                 p.reject(new FsError("Failed to flush stream."));
               }
-            })
+            }),
           );
         });
       } finally {
@@ -574,8 +647,8 @@ class IOStream {
   }
 
   /**
-   * Waits for all the pending operations on the stream to
-   * complete, and then closes the stream.
+   * Waits for all the pending operations on the stream to complete,
+   * and then closes the stream.
    */
   public async close() {
     if (this._stream) {
@@ -598,7 +671,7 @@ class IOStream {
                 } else {
                   p2.reject(new FsError("Failed to close stream."));
                 }
-              })
+              }),
             );
           });
         } finally {
