@@ -21,26 +21,26 @@ declare global {
   const _CI_: boolean;
 }
 
-const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. 
+const loremIpsum = `Lorem ipsum dolor sit amet, consectetur adipiscing elit.
 Praesent quis turpis pharetra, lobortis felis vitae, lacinia magna.
-Donec ac dolor pulvinar, laoreet libero a, pellentesque massa. 
-Mauris vel erat vitae ex suscipit euismod. Nulla commodo mollis 
-nulla, id sagittis justo eleifend at. Phasellus euismod sem eu 
-risus ultrices posuere a dignissim leo. Praesent a vulputate nibh, 
-nec accumsan nunc. Pellentesque a est nisi. In at porttitor eros, 
-non placerat ante. Curabitur quis porta eros, sit amet aliquet 
+Donec ac dolor pulvinar, laoreet libero a, pellentesque massa.
+Mauris vel erat vitae ex suscipit euismod. Nulla commodo mollis
+nulla, id sagittis justo eleifend at. Phasellus euismod sem eu
+risus ultrices posuere a dignissim leo. Praesent a vulputate nibh,
+nec accumsan nunc. Pellentesque a est nisi. In at porttitor eros,
+non placerat ante. Curabitur quis porta eros, sit amet aliquet
 sapien.
 
-Donec ac eros arcu. Quisque egestas ullamcorper turpis vitae pretium. 
+Donec ac eros arcu. Quisque egestas ullamcorper turpis vitae pretium.
 Vestibulum sed nisl mollis, malesuada mauris in, convallis felis.
-Maecenas mollis eros iaculis elit interdum, ac fringilla sem 
-bibendum. Maecenas rhoncus lobortis dictum. Cras ligula dolor, 
-aliquet non semper sit amet, gravida vitae elit. Praesent ac varius 
-risus. Nulla varius suscipit mauris nec vestibulum. Nulla facilisis 
-fringilla interdum. Sed consectetur ex eu fermentum rhoncus. 
-Suspendisse placerat lorem at scelerisque bibendum. In hac habitasse 
-platea dictumst. Ut facilisis, nisi in ultrices viverra, justo magna 
-dignissim augue, a sagittis erat arcu et metus. Lorem ipsum dolor sit 
+Maecenas mollis eros iaculis elit interdum, ac fringilla sem
+bibendum. Maecenas rhoncus lobortis dictum. Cras ligula dolor,
+aliquet non semper sit amet, gravida vitae elit. Praesent ac varius
+risus. Nulla varius suscipit mauris nec vestibulum. Nulla facilisis
+fringilla interdum. Sed consectetur ex eu fermentum rhoncus.
+Suspendisse placerat lorem at scelerisque bibendum. In hac habitasse
+platea dictumst. Ut facilisis, nisi in ultrices viverra, justo magna
+dignissim augue, a sagittis erat arcu et metus. Lorem ipsum dolor sit
 amet, consectetur adipiscing elit. Donec at commodo purus.
 `;
 
