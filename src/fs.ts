@@ -472,8 +472,11 @@ class Fs {
   /**
    * Creates a new Gio.File instance for the given path.
    */
-  public file(path: string, cwd?: string) {
-    return Gio.File.new_for_path(this.resolvePath(path, cwd));
+  public file(pathOrUri: string, cwd?: string) {
+    if (pathOrUri.match(/^\w+:\/\//)) {
+      return Gio.File.new_for_uri(pathOrUri);
+    }
+    return Gio.File.new_for_path(this.resolvePath(pathOrUri, cwd));
   }
 
   /**

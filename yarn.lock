@@ -522,7 +522,7 @@ clify.js@^1.0.0-beta.4:
   dependencies:
     minimist "^1.2.8"
 
-"clify@github:ncpa0cpl/clify.js#0.0.4":
+clify@ncpa0cpl/clify.js#0.0.4:
   version "1.0.3"
   resolved "https://codeload.github.com/ncpa0cpl/clify.js/tar.gz/fe91dede1322b302fbc7ca8f5695ce37ccfb8bf4"
   dependencies:
