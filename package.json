@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@ncpa0cpl/nodepack": "~2.3.3",
-    "@reactgjs/gest": "0.6.0-beta.2",
+    "@reactgjs/gest": "0.6.3",
     "axios": "~1.4.0",
     "esbuild": "~0.24.0",
     "git-hook-tasks": "git+https://github.com/ncpa0cpl/git-hook-tasks#4215793",

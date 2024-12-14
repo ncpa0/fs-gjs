@@ -288,14 +288,14 @@
   dependencies:
     "@octokit/openapi-types" "^18.0.0"
 
-"@reactgjs/gest@0.6.0-beta.2":
-  version "0.6.0-beta.2"
-  resolved "https://registry.yarnpkg.com/@reactgjs/gest/-/gest-0.6.0-beta.2.tgz#e62f1f1b525af19383583913e9254de9044044c1"
-  integrity sha512-61cAe0TDBLFyJw7yHWXTEp8XzqUFWAvCCj3WfiqTS0eqyHrDKOs0TFEpqiLC1gs/2yGhKdDcJGZPMOj3vi/QPA==
+"@reactgjs/gest@0.6.3":
+  version "0.6.3"
+  resolved "https://registry.yarnpkg.com/@reactgjs/gest/-/gest-0.6.3.tgz#2d0b4ffabfce915ac2848499c86a237f9c13d99d"
+  integrity sha512-3q5tPr6i7yFZWzcXaHnlK3vooeX1S9D5KmF4d9dtflckjVMiVcehjA7E9vX6/sRwgbZbA+QJjiYYcmJgv4J8Vg==
   dependencies:
     "@ncpa0cpl/mutex.js" "^1.0.1"
     esbuild "~0.24.0"
-    gjs-multiprocess "0.0.1-alpha.4"
+    gjs-multiprocess "0.0.5"
     path-gjsify "^1.0.0"
 
 "@ts-morph/bootstrap@^0.23.0":
@@ -964,10 +964,10 @@ gjs-esm-types@~0.0.4:
   resolved "https://registry.yarnpkg.com/gjs-esm-types/-/gjs-esm-types-0.0.4.tgz#60329a81d99c0252ae7c71c927ae0f2ef956465f"
   integrity sha512-5w9Y7etV9HorOVUswpMAM+tq5GpwLHKSqGREF392bjar6qzN2TwyCOfhnjoPbIfW9Kb1655bys54znMFfvc7ZQ==
 
-gjs-multiprocess@0.0.1-alpha.4:
-  version "0.0.1-alpha.4"
-  resolved "https://registry.yarnpkg.com/gjs-multiprocess/-/gjs-multiprocess-0.0.1-alpha.4.tgz#d38390b244c16ade4d9f8a28c91106ec0462c9c4"
-  integrity sha512-XC60JhJ1d8343RVFMKHtjLFGTR2wz0fA7+Yl+lLfypLsTisxR4Toy0OIUp1WiwTPMh/y7m891qXeSdYSw9O20w==
+gjs-multiprocess@0.0.5:
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/gjs-multiprocess/-/gjs-multiprocess-0.0.5.tgz#0d9677ce6fbe891a238117936457d85a7ad8bd4c"
+  integrity sha512-6/JSz9Ig4xAl6BH2OJQrTM45JVW48cJIVJ/abaZMZnnSciAYXO3LyBkLZ6e09ptn6ZJYrqFre/DatlTBnyyjDw==
 
 glob-parent@^5.1.2, glob-parent@~5.1.2:
   version "5.1.2"

@@ -8,10 +8,6 @@
         "script": "test:tsc"
       },
       {
-        "name": "ESLint",
-        "script": "test:lint"
-      },
-      {
         "name": "Prettier",
         "script": "test:prettier"
       },

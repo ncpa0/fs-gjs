@@ -1,6 +1,4 @@
-/**
- * @type {import("@reactgjs/gest/config").ConfigGetter}
- */
+/** @type {import("@reactgjs/gest/config").ConfigGetter} */
 const getConfig = ({ vargs }) => {
   const _CI_ = vargs.includes("--ci");
 
