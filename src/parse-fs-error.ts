@@ -9,7 +9,7 @@ export const parseFsError = (name: string, err: any): FsError => {
     }
 
     return err;
-  } else if (typeof err === "object") {
+  } else if (typeof err === "object" && err !== null) {
     const msg = err.message as string | undefined;
     const stack = err.stack as string | undefined;
 
